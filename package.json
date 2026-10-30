@@ -18,7 +18,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed-demo": "tsx scripts/seed-demo.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "ops:backup": "tsx scripts/ops/backup.ts",
+    "ops:restore-verify": "tsx scripts/ops/restore-verify.ts",
+    "ops:retention-run": "tsx scripts/ops/retention-run.ts"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.7",
@@ -43,6 +46,7 @@
     "@aws-sdk/client-s3": "3.1160.0",
     "@aws-sdk/s3-request-presigner": "3.1160.0",
     "@clerk/nextjs": "6.39.8",
+    "@sentry/node": "11.6.0",
     "decimal.js": "10.6.0",
     "drizzle-orm": "0.45.4",
     "lucide-react": "0.500.0",
