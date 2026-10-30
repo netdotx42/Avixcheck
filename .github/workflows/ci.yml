@@ -27,6 +27,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: PostgreSQL client tools for backup/restore tests
+        run: pg_dump --version && pg_restore --version
       - run: npm run lint
       - run: npm run typecheck
       - name: Migrations are in sync with schema

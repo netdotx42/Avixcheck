@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/format";
 import { changeRoleAction, removeMemberAction, revokeInvitationAction } from "@/app/actions/orgs";
 import { cancelJobAction, retryJobAction } from "@/app/actions/jobs";
 import { InviteForm } from "./invite-form";
+import { RetentionCard } from "./retention-card";
 
 export const metadata = { title: "Settings" };
 
@@ -119,6 +120,8 @@ export default async function SettingsPage() {
             )}
           </Card>
         )}
+
+        {can(ctx.role, "retention.manage") && <RetentionCard orgId={ctx.orgId} />}
 
         <Card>
           <h2 className="mb-4 font-semibold">Integrations</h2>

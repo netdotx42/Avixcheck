@@ -3,4 +3,4 @@
  *   import "@/modules/documents/jobs";
  * Handler modules call registerHandler(JOB_TYPES.x, fn) at import time.
  */
-export {};
+import "@/modules/ops/jobs";

@@ -29,6 +29,10 @@ For local work without Clerk keys, set `AUTH_PROVIDER=dev` and `SESSION_SECRET` 
 | `npm run db:migrate` | Apply migrations |
 | `npm test` | Unit + integration tests (needs Postgres; see below) |
 | `npm run lint` / `typecheck` | Static checks |
+| `npm run db:seed-demo` | Seed a labelled demo organisation (refused in production) |
+| `npm run ops:backup` | Database backup + manifest + storage listing (see `docs/RUNBOOK.md`) |
+| `npm run ops:restore-verify -- <manifest>` | Restore drill into a scratch database with row-count/checksum verification |
+| `npm run ops:retention-run` | Enqueue retention sweeps for all organisations now |
 
 Tests create a throwaway database owned by a non-superuser role so row-level security is really enforced. Point `TEST_ADMIN_DATABASE_URL` at a superuser connection (default `postgres://avix:avix@localhost:5432/postgres`).
 

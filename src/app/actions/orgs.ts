@@ -7,6 +7,7 @@ import { ACTIVE_ORG_COOKIE, requireOrg } from "@/lib/auth/context";
 import { getSessionUser } from "@/lib/auth/session";
 import { acceptInvitation, changeMemberRole, createInvitation, createOrganization, removeMember, revokeInvitation } from "@/lib/orgs";
 import { rateLimit } from "@/lib/ratelimit";
+import { enforceRateLimit } from "@/lib/rate-limit-policies";
 import { env } from "@/env";
 
 const role = z.enum(["admin", "reviewer", "viewer"]);
@@ -31,7 +32,7 @@ export type InviteState = { ok: true; link: string; email: string } | { ok: fals
 export async function inviteMemberAction(_prev: InviteState, formData: FormData): Promise<InviteState> {
   try {
     const ctx = await requireOrg("members.manage");
-    await rateLimit(`invite:${ctx.orgId}`, 50, 3600);
+    await enforceRateLimit("invite", ctx.orgId);
     const { token, invitation } = await createInvitation(
       { userId: ctx.user.id, orgId: ctx.orgId, role: ctx.role },
       { email: String(formData.get("email") ?? ""), role: role.parse(formData.get("role")) },
@@ -47,6 +48,7 @@ export async function inviteMemberAction(_prev: InviteState, formData: FormData)
 export async function acceptInvitationAction(formData: FormData) {
   const user = await getSessionUser();
   if (!user) redirect("/sign-in");
+  await enforceRateLimit("inviteAccept", user.id);
   const { orgId } = await acceptInvitation(user, String(formData.get("token") ?? ""));
   (await cookies()).set(ACTIVE_ORG_COOKIE, orgId, cookieOpts);
   redirect("/overview");
