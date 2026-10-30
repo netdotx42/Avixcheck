@@ -36,6 +36,8 @@ const schema = z.object({
 
   ANTHROPIC_API_KEY: optionalString,
   EXTRACTION_MODEL: z.string().default("claude-sonnet-5-5"),
+  /** "fixture" replays recorded outputs for end-to-end tests. Only allowed when APP_ENV=test. */
+  EXTRACTION_PROVIDER: z.enum(["anthropic", "fixture"]).default("anthropic"),
 
   SENTRY_DSN: optionalString,
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
@@ -56,6 +58,9 @@ export function env(): Env {
     cached = schema.parse(process.env);
     if (cached.NODE_ENV === "production" && cached.AUTH_PROVIDER === "dev") {
       throw new Error("AUTH_PROVIDER=dev is forbidden when NODE_ENV=production");
+    }
+    if (cached.EXTRACTION_PROVIDER === "fixture" && (cached.NODE_ENV === "production" || cached.APP_ENV !== "test")) {
+      throw new Error("EXTRACTION_PROVIDER=fixture is only allowed when APP_ENV=test outside production");
     }
   }
   return cached;
@@ -127,10 +132,13 @@ export function integrationStatus(e: Env = env()): IntegrationStatus[] {
     },
     {
       key: "aiExtraction",
-      label: "AI document extraction (Anthropic)",
+      label: e.EXTRACTION_PROVIDER === "fixture" ? "Document extraction (TEST FIXTURE provider)" : "AI document extraction (Anthropic)",
       required: true,
-      missing: check([["ANTHROPIC_API_KEY", e.ANTHROPIC_API_KEY]]),
-      note: "Reads invoice headers and lines. Financial checks never use AI.",
+      missing: e.EXTRACTION_PROVIDER === "fixture" ? [] : check([["ANTHROPIC_API_KEY", e.ANTHROPIC_API_KEY]]),
+      note:
+        e.EXTRACTION_PROVIDER === "fixture"
+          ? "End-to-end tests only: replays recorded outputs instead of reading the document. Refused outside APP_ENV=test."
+          : "Reads invoice headers and lines. Financial checks never use AI.",
     },
     {
       key: "errorMonitoring",

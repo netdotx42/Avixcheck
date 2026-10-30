@@ -52,8 +52,20 @@ jobs:
     env:
       TEST_ADMIN_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       NEXT_TELEMETRY_DISABLED: "1"
-      E2E_OUTPUT_DIR: ${{ github.workspace }}/../e2e-results
-      E2E_REPORT_DIR: ${{ github.workspace }}/../e2e-report
+      E2E_OUTPUT_DIR: /tmp/e2e-results
+      E2E_REPORT_DIR: /tmp/e2e-report
+      # Real storage and malware scanning for the upload-to-export spec.
+      E2E_S3_ENDPOINT: http://localhost:9000
+      E2E_S3_REGION: us-east-1
+      E2E_S3_BUCKET: avixcheck-e2e
+      E2E_S3_ACCESS_KEY_ID: avixminio
+      E2E_S3_SECRET_ACCESS_KEY: avixminio-secret
+      E2E_S3_FORCE_PATH_STYLE: "true"
+      E2E_CLAMAV_HOST: localhost
+      E2E_CLAMAV_PORT: "3310"
+      # Test-only extractor that replays tests/fixtures/extraction (refused outside APP_ENV=test).
+      E2E_EXTRACTION_PROVIDER: fixture
+      E2E_REQUIRE_WORKFLOW: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -61,12 +73,41 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Start S3-compatible storage and ClamAV
+        run: |
+          set -x
+          # MinIO no longer publishes images on Docker Hub; use its quay.io mirror,
+          # falling back to SeaweedFS (also a real S3-compatible server) if that pull fails.
+          docker run -d --name s3 -p 9000:9000 -e MINIO_ROOT_USER=avixminio -e MINIO_ROOT_PASSWORD=avixminio-secret \
+              quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server /data \
+            || docker run -d --name s3 -p 9000:8333 chrislusf/seaweedfs:3.80 server -s3
+          docker run -d --name clamav -p 3310:3310 clamav/clamav:1.4
       - run: npx playwright install --with-deps chromium
+      - name: Wait for storage and create the private bucket
+        env:
+          AWS_ACCESS_KEY_ID: avixminio
+          AWS_SECRET_ACCESS_KEY: avixminio-secret
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          set -x
+          for i in $(seq 60); do aws --endpoint-url http://localhost:9000 s3api list-buckets >/dev/null 2>&1 && break; sleep 2; done
+          aws --endpoint-url http://localhost:9000 s3api create-bucket --bucket avixcheck-e2e
+          aws --endpoint-url http://localhost:9000 s3api head-bucket --bucket avixcheck-e2e
+      - name: Wait for clamd (signature download can take a few minutes)
+        run: |
+          for i in $(seq 120); do
+            if [ "$(printf 'zPING\0' | nc -w 2 localhost 3310 | tr -d '\0')" = "PONG" ]; then echo "clamd ready"; exit 0; fi
+            sleep 5
+          done
+          docker logs clamav | tail -50; exit 1
+      - name: Service logs on failure
+        if: failure()
+        run: docker ps -a; docker logs s3 2>&1 | tail -50; docker logs clamav 2>&1 | tail -50
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
           path: |
-            ${{ github.workspace }}/../e2e-results
-            ${{ github.workspace }}/../e2e-report
+            /tmp/e2e-results
+            /tmp/e2e-report

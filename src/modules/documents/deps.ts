@@ -1,8 +1,9 @@
-import { isConfigured } from "@/env";
+import { env, isConfigured } from "@/env";
 import { deleteObject, getObjectBytes, putObject } from "@/lib/storage";
 import { scanBuffer, type ScanResult } from "@/lib/scan/clamav";
 import type { ExtractionProvider } from "@/modules/extraction/types";
 import { anthropicExtractionProvider } from "@/modules/extraction/anthropic";
+import { fixtureExtractionProvider } from "@/modules/extraction/fixture";
 
 /**
  * External services used by the documents pipeline. Production code always
@@ -34,7 +35,7 @@ const realDeps: DocumentDeps = {
     configured: () => isConfigured("malwareScan"),
     scan: (bytes) => scanBuffer(bytes),
   },
-  extractor: anthropicExtractionProvider,
+  extractor: env().EXTRACTION_PROVIDER === "fixture" ? fixtureExtractionProvider : anthropicExtractionProvider,
 };
 
 let current: DocumentDeps = realDeps;
