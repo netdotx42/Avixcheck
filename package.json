@@ -1,0 +1,60 @@
+{
+  "name": "avixcheck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AvixCheck — Every invoice. Checked.",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "worker": "tsx src/worker/index.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed-demo": "tsx scripts/seed-demo.ts"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.7",
+    "@tailwindcss/postcss": "4.1.18",
+    "@types/node": "22.20.5",
+    "@types/papaparse": "5.5.2",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "drizzle-kit": "0.31.11",
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.28",
+    "tailwindcss": "4.1.18",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "postcss": "8.5.32"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.3.0",
+    "@aws-sdk/client-s3": "3.1160.0",
+    "@aws-sdk/s3-request-presigner": "3.1160.0",
+    "@clerk/nextjs": "6.39.8",
+    "decimal.js": "10.6.0",
+    "drizzle-orm": "0.45.4",
+    "lucide-react": "0.500.0",
+    "next": "15.5.28",
+    "papaparse": "5.7.0",
+    "pg": "8.23.1",
+    "pg-boss": "12.3.1",
+    "pino": "9.14.0",
+    "react": "19.1.4",
+    "react-dom": "19.1.4",
+    "server-only": "0.0.1",
+    "zod": "4.6.7"
+  },
+  "overrides": {
+    "postcss": "$postcss"
+  }
+}
