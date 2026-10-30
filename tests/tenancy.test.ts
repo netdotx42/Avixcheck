@@ -98,3 +98,37 @@ describe("organisations and invitations", () => {
     await expect(orgs.changeMemberRole({ ...a.actor, orgId: a.org.id }, b.admin.id, "viewer")).rejects.toThrow(/not found/);
   });
 });
+
+describe("cross-tenant references", async () => {
+  const { documents, invoices, purchaseOrders } = await import("../src/db/schema");
+  const { randomUUID } = await import("node:crypto");
+
+  async function seedDocument(orgId: string) {
+    const [d] = await withTenant(orgId, (tx) =>
+      tx
+        .insert(documents)
+        .values({ orgId, storageKey: `org/${orgId}/documents/${randomUUID()}.pdf`, sha256: randomUUID(), sizeBytes: 10, mimeType: "application/pdf", originalName: "a.pdf" })
+        .returning(),
+    );
+    return d!;
+  }
+
+  it("rejects references to another org's rows, even with RLS bypassed", async () => {
+    const a = await makeOrg("RefA");
+    const b = await makeOrg("RefB");
+    const docA = await seedDocument(a.org.id);
+    const [supA] = await withTenant(a.org.id, (tx) => tx.insert(suppliers).values({ orgId: a.org.id, code: "SA", name: "A" }).returning());
+
+    await expectDbError(withTenant(b.org.id, (tx) => tx.insert(invoices).values({ orgId: b.org.id, documentId: docA.id })), /same organisation/);
+    await expectDbError(withSystem((tx) => tx.insert(invoices).values({ orgId: b.org.id, documentId: docA.id })), /same organisation/);
+    await expectDbError(
+      withTenant(b.org.id, (tx) => tx.insert(purchaseOrders).values({ orgId: b.org.id, supplierId: supA!.id, poNumber: "X", currency: "GBP" })),
+      /same organisation/,
+    );
+
+    const docB = await seedDocument(b.org.id);
+    const [inv] = await withTenant(b.org.id, (tx) => tx.insert(invoices).values({ orgId: b.org.id, documentId: docB.id }).returning());
+    expect(inv?.documentId).toBe(docB.id);
+    await expectDbError(withTenant(b.org.id, (tx) => tx.update(invoices).set({ supplierId: supA!.id }).where(eq(invoices.id, inv!.id))), /same organisation/);
+  });
+});

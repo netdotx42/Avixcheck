@@ -28,3 +28,15 @@ export async function withSystem<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
     return fn(tx);
   });
 }
+
+/**
+ * Await several Drizzle queries one after another on the same transaction.
+ * A transaction is a single connection, so firing queries in parallel with
+ * Promise.all queues them anyway and triggers pg's overlapping-query
+ * deprecation. Drizzle builders are lazy, so passing them here runs each in turn.
+ */
+export async function inSequence<T extends readonly unknown[]>(queries: [...T]): Promise<{ -readonly [K in keyof T]: Awaited<T[K]> }> {
+  const out: unknown[] = [];
+  for (const q of queries) out.push(await q);
+  return out as { -readonly [K in keyof T]: Awaited<T[K]> };
+}

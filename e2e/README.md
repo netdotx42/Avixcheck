@@ -27,6 +27,6 @@ Both need `TEST_ADMIN_DATABASE_URL`, a superuser URL used only to create the tes
 - Traces and screenshots go to the OS temp dir (`E2E_OUTPUT_DIR` overrides): writing them inside the project makes `next dev` hot-reload mid-test.
 - Optional integrations are passed through from `E2E_S3_*`, `E2E_CLAMAV_HOST`, `E2E_CLAMAV_PORT`, `E2E_ANTHROPIC_API_KEY`, `E2E_EXTRACTION_PROVIDER`. Locally: `docker compose up -d minio minio-init clamav`, then export the same `E2E_*` values the CI `e2e` job uses.
 
-## Known gap the tests document
+## Cross-tenant references
 
-`cross-tenant.test.ts` › "refuses a row that references another tenant's record" is marked `it.fails`: plain foreign keys are checked without RLS, so org B can insert an invoice pointing at org A's document, supplier or PO if it learns the ids. The fix is composite `(org_id, id)` foreign keys or a same-org trigger in a new migration. Once fixed the test starts passing, Vitest reports that as a failure, and `.fails` must be removed.
+`cross-tenant.test.ts` › "refuses a row that references another tenant's record" covers the same-org trigger from migration `0006_same_org_refs`: plain foreign keys are checked without RLS, so the trigger is what stops org B from storing ids of org A's documents, suppliers or POs.

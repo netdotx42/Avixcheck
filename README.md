@@ -4,7 +4,7 @@
 
 AvixCheck flags supplier invoice discrepancies against purchase orders and agreed prices before payment. One Next.js application plus a background worker, backed by PostgreSQL, managed authentication (Clerk), private S3-compatible storage, ClamAV malware scanning and AI document extraction.
 
-> Status: foundation in place (tenancy, auth, roles, job queue, storage, design system). Feature modules are being built in parallel; see `docs/ARCHITECTURE.md`. Not production-ready until the checks in `docs/RUNBOOK.md` pass.
+> Status: all modules are implemented (imports, upload and AI extraction, matching and checks, exceptions review, reports and exports, operations). Live integrations (Clerk, Anthropic, ClamAV, S3, Sentry, Resend) and a real deployment have not yet been verified, so this is **not production-ready**; see the readiness checklist in `docs/RUNBOOK.md`.
 
 ## Quick start (local)
 

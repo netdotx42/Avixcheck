@@ -105,17 +105,16 @@ describe("cross-tenant access beyond plain reads", () => {
     expect(await overviewMetrics(b.org.id)).toEqual(before);
   });
 
-  // Foreign keys are checked by Postgres without RLS, so a row in org B can point
-  // at a row in org A if B learns its id. Composite (org_id, id) foreign keys or
-  // a trigger would close this. Marked `fails` so CI stays honest: it documents
-  // the gap now and flips to a failure (forcing removal of `.fails`) once fixed.
-  it.fails("refuses a row that references another tenant's record [KNOWN GAP]", async () => {
+  // Foreign keys are checked by Postgres without RLS, so on their own they would
+  // let a row in org B point at a row in org A. Migration 0006_same_org_refs adds
+  // a same-org trigger on every tenant-to-tenant reference to close this.
+  it("refuses a row that references another tenant's record", async () => {
     const doc = await insertDocument(a.org.id);
     const [sup] = await withTenant(a.org.id, (tx) => tx.insert(suppliers).values({ orgId: a.org.id, code: `S-${randomUUID().slice(0, 6)}`, name: "A only" }).returning());
     const [po] = await withTenant(a.org.id, (tx) => tx.insert(purchaseOrders).values({ orgId: a.org.id, supplierId: sup!.id, poNumber: `PO-${randomUUID().slice(0, 6)}`, currency: "GBP" }).returning());
     await expectDbError(
       withTenant(b.org.id, (tx) => tx.insert(invoices).values({ orgId: b.org.id, documentId: doc.id, supplierId: sup!.id, purchaseOrderId: po!.id })),
-      /violates|tenant|foreign key/,
+      /same organisation/,
     );
   });
 });

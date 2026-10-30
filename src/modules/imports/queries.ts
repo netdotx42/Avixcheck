@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { Tx } from "@/db/client";
+import { inSequence } from "@/db/tenant";
 import { approvedCharges, importBatches, importRows, poLineBillings, poLines, poRevisions, priceAgreements, purchaseOrders, receipts, suppliers, users } from "@/db/schema";
 import { dec } from "@/lib/money/decimal";
 
@@ -109,7 +110,7 @@ export async function supplierOptions(tx: Tx) {
 export async function getSupplier(tx: Tx, id: string) {
   const [s] = await tx.select().from(suppliers).where(eq(suppliers.id, id));
   if (!s) return null;
-  const [agreements, charges, pos] = await Promise.all([
+  const [agreements, charges, pos] = await inSequence([
     tx.select().from(priceAgreements).where(eq(priceAgreements.supplierId, id)).orderBy(asc(priceAgreements.sku), desc(priceAgreements.validFrom), desc(priceAgreements.version)).limit(500),
     tx.select().from(approvedCharges).where(eq(approvedCharges.supplierId, id)).orderBy(asc(approvedCharges.chargeType), desc(approvedCharges.validFrom), desc(approvedCharges.version)).limit(500),
     tx.select().from(purchaseOrders).where(eq(purchaseOrders.supplierId, id)).orderBy(desc(purchaseOrders.issuedOn), desc(purchaseOrders.createdAt)).limit(50),
@@ -175,7 +176,7 @@ export async function getPurchaseOrder(tx: Tx, id: string) {
   if (!row) return null;
   const lines = await tx.select().from(poLines).where(eq(poLines.poId, id)).orderBy(asc(poLines.lineNo));
   const lineIds = lines.map((l) => l.id);
-  const [billed, recs, revisions] = await Promise.all([
+  const [billed, recs, revisions] = await inSequence([
     lineIds.length
       ? tx
           .select({
