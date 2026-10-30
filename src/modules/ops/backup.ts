@@ -161,7 +161,8 @@ export async function backup(opts: BackupOptions): Promise<{ manifestPath: strin
     // Dump and fingerprint concurrently from the same snapshot; the exporting
     // transaction must stay open until pg_dump has imported it.
     const dump = run("pg_dump", ["--format=custom", "--no-owner", "--no-acl", "--enable-row-security", `--snapshot=${snap}`, `--file=${dumpPath}`], pgEnv(opts.databaseUrl));
-    [tables, migration] = await Promise.all([fingerprintTables(client), latestMigration(client)]);
+    tables = await fingerprintTables(client);
+    migration = await latestMigration(client);
     await dump;
     await client.query("commit");
   } catch (e) {
