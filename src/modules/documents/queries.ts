@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { documents, exceptions, invoiceLines, invoices, jobs, suppliers } from "@/db/schema";
-import { withTenant } from "@/db/tenant";
+import { inSequence, withTenant } from "@/db/tenant";
 import type { Tone } from "@/components/ui/status-badge";
 
 export type InvoiceStatus = (typeof invoices.$inferSelect)["status"];
@@ -65,7 +65,7 @@ export async function listInvoices(orgId: string, opts: { q?: string; filter?: s
       .orderBy(desc(invoices.createdAt), desc(invoices.id))
       .limit(PAGE_SIZE)
       .offset((opts.page - 1) * PAGE_SIZE);
-    const [rows, [totalRow]] = await Promise.all([
+    const [rows, [totalRow]] = await inSequence([
       base,
       tx.select({ n: count() }).from(invoices).innerJoin(documents, eq(documents.id, invoices.documentId)).leftJoin(suppliers, eq(suppliers.id, invoices.supplierId)).where(where),
     ]);
@@ -83,7 +83,7 @@ export async function getInvoiceDetail(orgId: string, invoiceId: string) {
       .leftJoin(suppliers, eq(suppliers.id, invoices.supplierId))
       .where(eq(invoices.id, invoiceId));
     if (!row) return null;
-    const [lines, openExceptions, failedJobs] = await Promise.all([
+    const [lines, openExceptions, failedJobs] = await inSequence([
       tx.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, invoiceId)).orderBy(asc(invoiceLines.lineNo)),
       tx
         .select({ id: exceptions.id, kind: exceptions.kind, title: exceptions.title, status: exceptions.status })
