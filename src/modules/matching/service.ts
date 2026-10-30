@@ -96,8 +96,19 @@ export async function runMatching(orgId: string, invoiceId: string, revision: nu
     const poConds = [];
     if (poNorm) poConds.push(sql`regexp_replace(upper(${purchaseOrders.poNumber}), '[^A-Z0-9]', '', 'g') = ${poNorm}`);
     // Credit notes may omit the PO but reference the credited invoice.
-    if (inv.creditsInvoiceId) {
-      const [credited] = await tx.select({ poId: invoices.purchaseOrderId }).from(invoices).where(eq(invoices.id, inv.creditsInvoiceId));
+    let creditedId = inv.creditsInvoiceId;
+    const creditedNumber = normId(inv.creditsInvoiceNumberRaw);
+    if (!creditedId && inv.kind === "credit_note" && creditedNumber) {
+      // Resolve "credits invoice no. X" only when exactly one non-rejected invoice carries that number.
+      const hits = await tx
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(and(eq(invoices.kind, "invoice"), sql`${invoices.status} <> 'rejected'`, sql`regexp_replace(upper(coalesce(${invoices.invoiceNumber}, '')), '[^A-Z0-9]', '', 'g') = ${creditedNumber}`))
+        .limit(2);
+      if (hits.length === 1) creditedId = hits[0]!.id;
+    }
+    if (creditedId) {
+      const [credited] = await tx.select({ poId: invoices.purchaseOrderId }).from(invoices).where(eq(invoices.id, creditedId));
       if (credited?.poId && !poNorm) {
         const [p] = await tx.select({ poNumber: purchaseOrders.poNumber }).from(purchaseOrders).where(eq(purchaseOrders.id, credited.poId));
         if (p) header.poNumberRaw = p.poNumber;

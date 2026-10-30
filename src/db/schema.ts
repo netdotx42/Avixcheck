@@ -223,6 +223,9 @@ export const approvedCharges = pgTable(
     currency: text("currency").notNull(),
     validFrom: date("valid_from").notNull(),
     validTo: date("valid_to"),
+    /** Charges are versioned like agreements: a changed row supersedes, never overwrites. */
+    version: integer("version").notNull().default(1),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [index("approved_charges_lookup_idx").on(t.orgId, t.supplierId, t.chargeType)],
@@ -261,9 +264,12 @@ export const importBatches = pgTable(
     errorCount: integer("error_count").notNull().default(0),
     createdBy: uuid("created_by").notNull().references(() => users.id),
     committedAt: timestamp("committed_at", { withTimezone: true }),
+    committedBy: uuid("committed_by").references(() => users.id),
+    /** Counts per action (create/update/unchanged/...) computed at preview and at commit. */
+    summary: jsonb("summary").notNull().default(sql`'{}'::jsonb`),
     createdAt: createdAt(),
   },
-  (t) => [index("import_batches_org_idx").on(t.orgId, t.createdAt)],
+  (t) => [index("import_batches_org_idx").on(t.orgId, t.createdAt), index("import_batches_org_sha_idx").on(t.orgId, t.kind, t.fileSha256)],
 );
 
 export const importRows = pgTable(
@@ -333,7 +339,7 @@ export const invoices = pgTable(
     supplierId: uuid("supplier_id").references(() => suppliers.id),
     /** Supplier name exactly as printed; untrusted. */
     supplierNameRaw: text("supplier_name_raw"),
-    /** Supplier tax/VAT id exactly as printed; untrusted. Used for supplier matching. */
+    /** Supplier tax/VAT id as printed; untrusted, used for supplier matching. */
     supplierTaxIdRaw: text("supplier_tax_id_raw"),
     invoiceNumber: text("invoice_number"),
     invoiceDate: date("invoice_date"),
@@ -343,6 +349,8 @@ export const invoices = pgTable(
     purchaseOrderId: uuid("purchase_order_id").references(() => purchaseOrders.id),
     /** For credit notes: the invoice being credited, when known. */
     creditsInvoiceId: uuid("credits_invoice_id"),
+    /** For credit notes: the credited invoice number as printed; untrusted. */
+    creditsInvoiceNumberRaw: text("credits_invoice_number_raw"),
     subtotal: money("subtotal"),
     taxTotal: money("tax_total"),
     total: money("total"),

@@ -295,6 +295,41 @@ describe("balances: concurrency, partial billing, credit notes, amendments", () 
   });
 });
 
+describe("versioned reference data and credit-note references", () => {
+  it("only the current version of an approved charge applies", async () => {
+    const org = await makeOrg("Charges");
+    const ref = await seedReference(org);
+    await withTenant(org.org.id, (tx) =>
+      tx.insert(s.approvedCharges).values([
+        { orgId: org.org.id, supplierId: ref.supplierId, chargeType: "Freight", maxAmount: "50.00", currency: "GBP", validFrom: "2026-01-01", version: 1, supersededAt: new Date() },
+        { orgId: org.org.id, supplierId: ref.supplierId, chargeType: "Freight", maxAmount: "20.00", currency: "GBP", validFrom: "2026-01-01", version: 2 },
+      ]),
+    );
+    const inv = await createInvoice(org, { qty: "2", total: "45.00", number: "FR-1" });
+    await withTenant(org.org.id, async (tx) => {
+      await tx.update(s.invoices).set({ subtotal: "45.00" }).where(eq(s.invoices.id, inv.id));
+      await tx.insert(s.invoiceLines).values({ orgId: org.org.id, invoiceId: inv.id, lineNo: 2, lineType: "charge", chargeType: "freight", description: "Freight", amount: "25.00" });
+    });
+    await drain();
+    const f = await findings(org, inv.id);
+    expect(f.map((x) => [x.type, x.amount])).toEqual([["unapproved_charge", "5.0000"]]);
+  });
+
+  it("a credit note naming the credited invoice number restores that invoice's PO balance", async () => {
+    const org = await makeOrg("CreditRef");
+    const ref = await seedReference(org);
+    await createInvoice(org, { qty: "100", number: "ORIG-77" });
+    await drain();
+    const credit = await createInvoice(org, { kind: "credit_note", qty: "30", number: "CN-77", poNumber: null });
+    await withTenant(org.org.id, (tx) => tx.update(s.invoices).set({ creditsInvoiceNumberRaw: "orig 77" }).where(eq(s.invoices.id, credit.id)));
+    await drain();
+    const after = await getInvoice(org, credit.id);
+    expect(after.purchaseOrderId).toBe(ref.poId);
+    expect(after.status).toBe("passed");
+    expect((await withTenant(org.org.id, (tx) => poBalances(tx, ref.poId)))[0]).toMatchObject({ billed: "70.0000", remaining: "30.0000" });
+  });
+});
+
 describe("uncertain matching, permissions and tenant isolation", () => {
   it("routes a weak match to review and resumes after a reviewer confirms it", async () => {
     const org = await makeOrg("Review");

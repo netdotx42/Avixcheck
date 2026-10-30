@@ -1,5 +1,5 @@
 {
-  "id": "1a011ac3-80d2-4da4-9074-fe19159a3778",
+  "id": "6d180bb2-b0bd-4c58-b5fe-b1df1a68e4d2",
   "prevId": "056daa5b-4fc7-4f6a-a44f-040d0b27bc81",
   "version": "7",
   "dialect": "postgresql",
@@ -54,6 +54,19 @@
         "valid_to": {
           "name": "valid_to",
           "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "superseded_at": {
+          "name": "superseded_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -1259,6 +1272,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "committed_by": {
+          "name": "committed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1279,6 +1305,33 @@
             },
             {
               "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "import_batches_org_sha_idx": {
+          "name": "import_batches_org_sha_idx",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "file_sha256",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1310,6 +1363,19 @@
           "tableTo": "users",
           "columnsFrom": [
             "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "import_batches_committed_by_users_id_fk": {
+          "name": "import_batches_committed_by_users_id_fk",
+          "tableFrom": "import_batches",
+          "tableTo": "users",
+          "columnsFrom": [
+            "committed_by"
           ],
           "columnsTo": [
             "id"
@@ -1847,12 +1913,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "supplier_tax_id_raw": {
-          "name": "supplier_tax_id_raw",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "invoice_number": {
           "name": "invoice_number",
           "type": "text",
@@ -1934,12 +1994,6 @@
         "failure_reason": {
           "name": "failure_reason",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "match_result": {
-          "name": "match_result",
-          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

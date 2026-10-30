@@ -1,0 +1,72 @@
+# Render Blueprint: web + worker + daily backup from one Docker image.
+# Secrets are `sync: false` — set them in the Render dashboard (never in this file).
+# Migrations run in the web service's pre-deploy step, before new code takes traffic.
+services:
+  - type: web
+    name: avixcheck-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    healthCheckPath: /api/health
+    preDeployCommand: npm run db:migrate
+    autoDeploy: false
+    envVars: &appEnv
+      - { key: NODE_ENV, value: production }
+      - { key: APP_ENV, value: production }
+      - { key: AUTH_PROVIDER, value: clerk }
+      - { key: LOG_LEVEL, value: info }
+      - { key: APP_URL, sync: false }
+      - { key: DATABASE_URL, sync: false }
+      - { key: MIGRATION_DATABASE_URL, sync: false }
+      - { key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, sync: false }
+      - { key: CLERK_SECRET_KEY, sync: false }
+      - { key: S3_ENDPOINT, sync: false }
+      - { key: S3_REGION, sync: false }
+      - { key: S3_BUCKET, sync: false }
+      - { key: S3_ACCESS_KEY_ID, sync: false }
+      - { key: S3_SECRET_ACCESS_KEY, sync: false }
+      - { key: S3_FORCE_PATH_STYLE, sync: false }
+      - { key: CLAMAV_HOST, sync: false }
+      - { key: CLAMAV_PORT, value: "3310" }
+      - { key: ANTHROPIC_API_KEY, sync: false }
+      - { key: EXTRACTION_MODEL, value: claude-sonnet-5-5 }
+      - { key: SENTRY_DSN, sync: false }
+      - { key: RESEND_API_KEY, sync: false }
+      - { key: EMAIL_FROM, sync: false }
+
+  - type: worker
+    name: avixcheck-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: npm run worker
+    plan: standard
+    autoDeploy: false
+    envVars: *appEnv
+
+  # ClamAV daemon on Render's private network (CLAMAV_HOST=avixcheck-clamav).
+  - type: pserv
+    name: avixcheck-clamav
+    runtime: image
+    image: { url: docker.io/clamav/clamav:1.4 }
+    plan: standard
+
+  - type: cron
+    name: avixcheck-backup
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: npm run ops:backup -- --out /app/backups
+    schedule: "15 2 * * *"
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: BACKUP_DATABASE_URL, sync: false }
+      - { key: S3_REGION, sync: false }
+      - { key: S3_BUCKET, sync: false }
+      - { key: S3_ENDPOINT, sync: false }
+      - { key: S3_ACCESS_KEY_ID, sync: false }
+      - { key: S3_SECRET_ACCESS_KEY, sync: false }
+      - { key: S3_FORCE_PATH_STYLE, sync: false }
+      - { key: BACKUP_S3_BUCKET, sync: false }
+      - { key: BACKUP_S3_REGION, sync: false }
+      - { key: BACKUP_S3_ENDPOINT, sync: false }
+      - { key: BACKUP_S3_ACCESS_KEY_ID, sync: false }
+      - { key: BACKUP_S3_SECRET_ACCESS_KEY, sync: false }

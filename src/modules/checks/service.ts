@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import type { Tx } from "@/db/client";
 import {
   approvedCharges,
@@ -103,7 +103,8 @@ export async function runCheck(orgId: string, invoiceId: string, revision: numbe
 
     const agreementIds = match.lines.map((l) => (isTrusted(l.agreement) ? l.agreement.id : null)).filter((x): x is string => Boolean(x));
     const agreementRows = agreementIds.length ? await tx.select().from(priceAgreements).where(inArray(priceAgreements.id, agreementIds)) : [];
-    const chargeRows = supplierId ? await tx.select().from(approvedCharges).where(eq(approvedCharges.supplierId, supplierId)) : [];
+    // Approved charges are versioned: only current versions apply.
+    const chargeRows = supplierId ? await tx.select().from(approvedCharges).where(and(eq(approvedCharges.supplierId, supplierId), isNull(approvedCharges.supersededAt))) : [];
     const duplicateCandidates = await loadDuplicateCandidates(tx, inv, supplierId, doc?.sha256 ?? null);
 
     const input: CheckInput = {
@@ -166,7 +167,7 @@ export async function runCheck(orgId: string, invoiceId: string, revision: numbe
           poLines: poLineStates.map((l) => ({ id: l.id, lineNo: l.lineNo, quantity: l.quantity, unitPrice: l.unitPrice, unit: l.unit, cancelled: l.cancelled, billedQuantityOther: l.billedQuantityOther, receivedQuantity: l.receivedQuantity, receiptIds: l.receiptIds })),
           poBilledAmountOther,
           agreements: agreementRows.map((a) => ({ id: a.id, ref: a.agreementRef, version: a.version, unitPrice: a.unitPrice, currency: a.currency, unit: a.unit, discountPct: a.discountPct, minQuantity: a.minQuantity, validFrom: a.validFrom, validTo: a.validTo })),
-          approvedCharges: chargeRows.map((c) => ({ id: c.id, chargeType: c.chargeType, maxAmount: c.maxAmount, currency: c.currency, validFrom: c.validFrom, validTo: c.validTo })),
+          approvedCharges: chargeRows.map((c) => ({ id: c.id, version: c.version, chargeType: c.chargeType, maxAmount: c.maxAmount, currency: c.currency, validFrom: c.validFrom, validTo: c.validTo })),
           duplicateCandidateIds: duplicateCandidates.map((d) => d.id),
           supersededRunIds: superseded.map((s) => s.id),
         },
