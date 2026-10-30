@@ -35,7 +35,8 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `npx tsx e2e/provision.ts && npx next dev -p ${PORT}`,
+    // The worker runs alongside the app so background jobs (scan, extract, match, check, export) really run.
+    command: `npx tsx e2e/provision.ts && (npx tsx src/worker/index.ts & exec npx next dev -p ${PORT})`,
     url: `${baseURL}/api/health`,
     timeout: 180_000,
     reuseExistingServer: !process.env.CI,
@@ -60,6 +61,7 @@ export default defineConfig({
         "ANTHROPIC_API_KEY",
         "EXTRACTION_PROVIDER",
       ]),
+      WORKER_SCHEDULER: "off",
     },
   },
 });
