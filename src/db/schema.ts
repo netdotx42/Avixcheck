@@ -566,8 +566,12 @@ export const exportsTable = pgTable(
     createdBy: uuid("created_by").notNull().references(() => users.id),
     createdAt: createdAt(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    /** Downloads are refused after this; the retention sweep deletes the object. Set when the file is ready. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /** Visible failure reason when status = failed. */
+    error: text("error"),
   },
-  (t) => [index("exports_org_idx").on(t.orgId, t.createdAt)],
+  (t) => [index("exports_org_idx").on(t.orgId, t.createdAt), index("exports_expiry_idx").on(t.status, t.expiresAt)],
 );
 
 export const rateLimits = pgTable("rate_limits", {

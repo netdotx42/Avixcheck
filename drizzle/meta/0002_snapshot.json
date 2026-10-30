@@ -1,5 +1,5 @@
 {
-  "id": "b1b324bb-bafc-4633-b355-1ccc369ab3ff",
+  "id": "056daa5b-4fc7-4f6a-a44f-040d0b27bc81",
   "prevId": "5c23b828-93fd-4423-8c87-f2726fa425c4",
   "version": "7",
   "dialect": "postgresql",
@@ -54,19 +54,6 @@
         "valid_to": {
           "name": "valid_to",
           "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "superseded_at": {
-          "name": "superseded_at",
-          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -1110,6 +1097,18 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1124,6 +1123,27 @@
             },
             {
               "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "exports_expiry_idx": {
+          "name": "exports_expiry_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "expires_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1239,19 +1259,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "committed_by": {
-          "name": "committed_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "summary": {
-          "name": "summary",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1272,33 +1279,6 @@
             },
             {
               "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "import_batches_org_sha_idx": {
-          "name": "import_batches_org_sha_idx",
-          "columns": [
-            {
-              "expression": "org_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "kind",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "file_sha256",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1330,19 +1310,6 @@
           "tableTo": "users",
           "columnsFrom": [
             "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "import_batches_committed_by_users_id_fk": {
-          "name": "import_batches_committed_by_users_id_fk",
-          "tableFrom": "import_batches",
-          "tableTo": "users",
-          "columnsFrom": [
-            "committed_by"
           ],
           "columnsTo": [
             "id"
