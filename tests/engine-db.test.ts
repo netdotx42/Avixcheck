@@ -10,6 +10,7 @@ const { enqueueMatch, runMatching, requestRecheck, confirmMatch } = await import
 const { runCheck } = await import("../src/modules/checks/service");
 const { poBalances, releaseInvoiceBillings } = await import("../src/modules/checks/balances");
 const { runOnce } = await import("../src/lib/jobs/runner");
+const { decideException } = await import("../src/modules/exceptions/service");
 await import("../src/worker/handlers");
 
 type Org = Awaited<ReturnType<typeof makeOrg>>;
@@ -243,9 +244,15 @@ describe("balances: concurrency, partial billing, credit notes, amendments", () 
     await drain();
     expect((await getInvoice(org, credit.id)).status).toBe("passed");
     expect((await withTenant(org.org.id, (tx) => poBalances(tx, ref.poId)))[0]).toMatchObject({ billed: "100.0000", remaining: "0.0000" });
-    // Rejecting the over-billing invoice releases its billings.
-    await withTenant(org.org.id, (tx) => releaseInvoiceBillings(tx, { orgId: org.org.id, invoiceId: over.id, actorUserId: null, reason: "rejected" }));
+    // Rejecting the over-billing invoice through the exceptions workflow releases its billings.
+    const [ex] = await withTenant(org.org.id, (tx) => tx.select().from(s.exceptions).where(and(eq(s.exceptions.invoiceId, over.id), eq(s.exceptions.status, "open"))));
+    await decideException(org.actor, { exceptionId: ex!.id, revision: ex!.revision, decision: "reject_invoice", reason: "Over-billed" });
+    expect((await getInvoice(org, over.id)).status).toBe("rejected");
     expect((await withTenant(org.org.id, (tx) => poBalances(tx, ref.poId)))[0]).toMatchObject({ billed: "80.0000", remaining: "20.0000" });
+    const released = await withTenant(org.org.id, (tx) => tx.select({ action: s.auditEvents.action }).from(s.auditEvents).where(eq(s.auditEvents.entityId, over.id)));
+    expect(released.map((r) => r.action)).toContain("invoice.billings_released");
+    // Releasing again is a no-op.
+    expect(await withTenant(org.org.id, (tx) => releaseInvoiceBillings(tx, { orgId: org.org.id, invoiceId: over.id, actorUserId: null, reason: "again" }))).toBe(0);
   });
 
   it("a recheck after a PO amendment supersedes the old run without double counting", async () => {
