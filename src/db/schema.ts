@@ -333,6 +333,8 @@ export const invoices = pgTable(
     supplierId: uuid("supplier_id").references(() => suppliers.id),
     /** Supplier name exactly as printed; untrusted. */
     supplierNameRaw: text("supplier_name_raw"),
+    /** Supplier tax/VAT id exactly as printed; untrusted. Used for supplier matching. */
+    supplierTaxIdRaw: text("supplier_tax_id_raw"),
     invoiceNumber: text("invoice_number"),
     invoiceDate: date("invoice_date"),
     dueDate: date("due_date"),
@@ -349,6 +351,11 @@ export const invoices = pgTable(
     /** Raw model output, stored for audit; never trusted without validation. */
     extractionRaw: jsonb("extraction_raw"),
     failureReason: text("failure_reason"),
+    /**
+     * Outcome of the deterministic matcher for a given invoice revision (see
+     * src/modules/matching/types.ts `MatchResult`). Read by the check run.
+     */
+    matchResult: jsonb("match_result"),
     /** Optimistic concurrency for edits. */
     revision: integer("revision").notNull().default(1),
     createdBy: uuid("created_by").references(() => users.id),

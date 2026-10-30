@@ -4,3 +4,5 @@
  * Handler modules call registerHandler(JOB_TYPES.x, fn) at import time.
  */
 import "@/modules/exports/jobs";
+import "@/modules/matching/jobs";
+import "@/modules/checks/jobs";
