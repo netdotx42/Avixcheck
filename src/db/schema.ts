@@ -339,6 +339,8 @@ export const invoices = pgTable(
     supplierId: uuid("supplier_id").references(() => suppliers.id),
     /** Supplier name exactly as printed; untrusted. */
     supplierNameRaw: text("supplier_name_raw"),
+    /** Supplier tax/VAT id as printed; untrusted, used for supplier matching. */
+    supplierTaxIdRaw: text("supplier_tax_id_raw"),
     invoiceNumber: text("invoice_number"),
     invoiceDate: date("invoice_date"),
     dueDate: date("due_date"),
@@ -347,6 +349,8 @@ export const invoices = pgTable(
     purchaseOrderId: uuid("purchase_order_id").references(() => purchaseOrders.id),
     /** For credit notes: the invoice being credited, when known. */
     creditsInvoiceId: uuid("credits_invoice_id"),
+    /** For credit notes: the credited invoice number as printed; untrusted. */
+    creditsInvoiceNumberRaw: text("credits_invoice_number_raw"),
     subtotal: money("subtotal"),
     taxTotal: money("tax_total"),
     total: money("total"),

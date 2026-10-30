@@ -5,3 +5,5 @@
  */
 import "@/modules/exports/jobs";
 import "@/modules/ops/jobs";
+import "@/modules/documents/jobs";
+import "@/modules/extraction/jobs";

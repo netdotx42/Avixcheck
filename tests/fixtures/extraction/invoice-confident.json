@@ -1,0 +1,19 @@
+{
+  "document_type": "invoice",
+  "supplier_name": { "value": "Acme Industrial Supplies Ltd", "confidence": 0.99 },
+  "supplier_tax_id": { "value": "GB123456789", "confidence": 0.97 },
+  "invoice_number": { "value": "INV-10042", "confidence": 0.99 },
+  "invoice_date": { "value": "2026-09-14", "confidence": 0.98 },
+  "due_date": { "value": "2026-10-14", "confidence": 0.95 },
+  "currency": { "value": "gbp", "confidence": 0.99 },
+  "po_number": { "value": "PO-7781", "confidence": 0.97 },
+  "credited_invoice_number": { "value": null, "confidence": 1 },
+  "subtotal": { "value": "1,250.00", "confidence": 0.98 },
+  "tax_total": { "value": "250.00", "confidence": 0.98 },
+  "total": { "value": "1500.00", "confidence": 0.99 },
+  "lines": [
+    { "line_type": "goods", "charge_type": null, "sku": "BOLT-M8", "description": "M8 hex bolts, box of 100", "quantity": "10", "unit": "box", "unit_price": "100.000000", "amount": "1000.00", "tax_rate": "20", "po_line_ref": "1", "confidence": 0.97 },
+    { "line_type": "charge", "charge_type": "freight", "sku": null, "description": "Delivery", "quantity": "1", "unit": "each", "unit_price": "250.00", "amount": "250.00", "tax_rate": "20", "po_line_ref": null, "confidence": 0.95 }
+  ],
+  "warnings": []
+}
