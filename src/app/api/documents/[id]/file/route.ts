@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireOrg } from "@/lib/auth/context";
 import { ForbiddenError, UnauthenticatedError } from "@/lib/auth/permissions";
 import { reportError } from "@/lib/logger";
+import { RateLimitedError } from "@/lib/ratelimit";
+import { enforceRateLimit } from "@/lib/rate-limit-policies";
 import { signedGetUrl } from "@/lib/storage";
 import { getPreviewableDocument } from "@/modules/documents/queries";
 import { isConfigured } from "@/env";
@@ -18,6 +20,7 @@ const NO_STORE = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer"
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireOrg("document.view");
+    await enforceRateLimit("signedUrl", ctx.user.id);
     if (!isConfigured("storage")) return NextResponse.json({ error: "Document storage is not configured." }, { status: 503, headers: NO_STORE });
     const { id } = await params;
     const found = await getPreviewableDocument(ctx.orgId, id);
@@ -31,6 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   } catch (err) {
     if (err instanceof UnauthenticatedError) return NextResponse.json({ error: "Not signed in" }, { status: 401, headers: NO_STORE });
     if (err instanceof ForbiddenError) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE });
+    if (err instanceof RateLimitedError) return NextResponse.json({ error: "Too many requests. Please wait and try again." }, { status: 429, headers: { ...NO_STORE, "Retry-After": String(err.retryAfterSeconds) } });
     reportError(err, { route: "documents.file" });
     return NextResponse.json({ error: "Could not open the document." }, { status: 500, headers: NO_STORE });
   }

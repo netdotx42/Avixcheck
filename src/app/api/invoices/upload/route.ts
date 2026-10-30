@@ -5,7 +5,8 @@ import { requireOrg } from "@/lib/auth/context";
 import { ForbiddenError, UnauthenticatedError } from "@/lib/auth/permissions";
 import { reportError } from "@/lib/logger";
 import { DomainError } from "@/lib/orgs";
-import { rateLimit, RateLimitedError } from "@/lib/ratelimit";
+import { RateLimitedError } from "@/lib/ratelimit";
+import { enforceRateLimit } from "@/lib/rate-limit-policies";
 import { uploadInvoiceDocument } from "@/modules/documents/service";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   try {
     const ctx = await requireOrg("invoice.upload");
-    await rateLimit(`upload:${ctx.user.id}`, 60, 600);
+    await enforceRateLimit("upload", ctx.user.id);
     const max = env().MAX_UPLOAD_BYTES;
     // Reject oversize bodies before buffering them (multipart overhead allowance: 64 KB).
     const declared = Number(req.headers.get("content-length") ?? "0");
