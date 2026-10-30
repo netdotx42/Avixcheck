@@ -62,7 +62,7 @@ const LINE_COLS: { key: keyof Line; label: string; numeric?: boolean; width: str
 const blankLine = (): Line => ({ id: null, lineNo: null, lineType: "goods", chargeType: null, sku: null, description: null, quantity: null, unit: null, unitPrice: null, amount: null, taxRate: null, poLineRef: null, extractionConfidence: null, manuallyCorrected: true });
 const lowConf = (c: string | null) => c !== null && Number(c) < 0.9;
 
-export function InvoiceEditor({ editable, invoiceId, revision, header: initialHeader, lines: initialLines }: { editable: boolean; invoiceId: string; revision: number; header: Header; lines: Line[] }) {
+export function InvoiceEditor({ editable, inReview, invoiceId, revision, header: initialHeader, lines: initialLines }: { editable: boolean; inReview: boolean; invoiceId: string; revision: number; header: Header; lines: Line[] }) {
   const [header, setHeader] = useState(initialHeader);
   const [lines, setLines] = useState(initialLines);
   const [state, action, pending] = useActionState<CorrectionState, FormData>(correctInvoiceAction, null);
@@ -154,10 +154,13 @@ export function InvoiceEditor({ editable, invoiceId, revision, header: initialHe
         </div>
       </fieldset>
 
+      {editable && inReview && (
+        <p className="text-xs text-muted">If every value matches the document, saving without changes confirms the extraction and sends the invoice on to matching.</p>
+      )}
       {editable && (
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" className="btn btn-secondary" onClick={() => setLines((ls) => [...ls, blankLine()])} disabled={pending}><Plus aria-hidden className="size-4" />Add line</button>
-          <button className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Save corrections"}</button>
+          <button className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : inReview ? "Save and confirm values" : "Save corrections"}</button>
           <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => { setHeader(initialHeader); setLines(initialLines); }}>Reset</button>
         </div>
       )}
@@ -166,7 +169,17 @@ export function InvoiceEditor({ editable, invoiceId, revision, header: initialHe
           {state.error} {state.conflict && <button type="button" className="underline" onClick={() => window.location.reload()}>Reload</button>}
         </p>
       )}
-      {state?.ok && <p role="status" className="text-sm text-ok">{state.changed ? `Saved as revision ${state.revision}. Matching and checks will re-run.` : "No changes to save."}</p>}
+      {state?.ok && (
+        <p role="status" className={`text-sm ${state.missing.length ? "text-warn" : "text-ok"}`}>
+          {state.missing.length
+            ? `Saved as revision ${state.revision}. Still missing: ${state.missing.join(", ")}. The invoice stays in review until these are filled in.`
+            : state.confirmed
+              ? `Values confirmed (revision ${state.revision}). Matching and checks will run.`
+              : state.changed
+                ? `Saved as revision ${state.revision}. Matching and checks will re-run.`
+                : "No changes to save."}
+        </p>
+      )}
     </form>
   );
 }
