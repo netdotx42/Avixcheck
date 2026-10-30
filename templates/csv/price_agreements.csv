@@ -1,0 +1,2 @@
+agreement_ref,supplier_code,sku,description,unit_price,currency,unit,discount_pct,min_quantity,valid_from,valid_to
+AGR-2026-01,SUP-001,BOX-12,12in shipping box,0.420000,GBP,each,2.5,500,2026-01-01,2026-12-31

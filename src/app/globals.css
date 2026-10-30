@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* AvixCheck design tokens — black, silver and blue. */
+@theme {
+  --color-bg: #080b10;
+  --color-surface: #141a23;
+  --color-surface-2: #1a2130;
+  --color-text: #e5e7eb;
+  --color-muted: #9ca3af;
+  --color-border: #303a49;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-focus: #60a5fa;
+  --color-silver: #c0c7d2;
+
+  /* Status colours: always paired with an icon and a text label. */
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #60a5fa;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-card: 0.75rem;
+}
+
+@layer base {
+  html { color-scheme: dark; }
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection { background: rgb(37 99 235 / 0.4); }
+}
+
+@layer components {
+  /* Financial figures: tabular, right-aligned in tables. */
+  .num { font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1; }
+
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+  }
+
+  /* Restrained metallic accent: a thin brushed-silver hairline. */
+  .metal-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(192 199 210 / 0.55), transparent);
+  }
+  .metal-text {
+    background: linear-gradient(180deg, #f3f4f6 0%, #c0c7d2 55%, #8b95a5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    border-radius: 0.5rem; padding: 0.5rem 0.875rem;
+    font-size: 0.875rem; font-weight: 500; line-height: 1.25rem;
+    transition: background-color 120ms, border-color 120ms;
+  }
+  .btn-primary { background: var(--color-primary); color: white; }
+  .btn-primary:hover { background: var(--color-primary-hover); }
+  .btn-secondary { background: transparent; color: var(--color-text); border: 1px solid var(--color-border); }
+  .btn-secondary:hover { border-color: var(--color-silver); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .input {
+    width: 100%; background: var(--color-bg); color: var(--color-text);
+    border: 1px solid var(--color-border); border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem; font-size: 0.875rem;
+  }
+  .input::placeholder { color: var(--color-muted); }
+  .label { display: block; font-size: 0.8125rem; color: var(--color-muted); margin-bottom: 0.25rem; }
+
+  .table { width: 100%; font-size: 0.875rem; border-collapse: collapse; }
+  .table th { text-align: left; font-weight: 500; color: var(--color-muted); padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--color-border); }
+  .table td { padding: 0.625rem 0.75rem; border-bottom: 1px solid rgb(48 58 73 / 0.6); }
+  .table tr:hover td { background: rgb(26 33 48 / 0.6); }
+
+  .skeleton { background: linear-gradient(90deg, #141a23, #1f2735, #141a23); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 0.375rem; }
+}
+
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}

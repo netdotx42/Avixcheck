@@ -1,0 +1,2 @@
+supplier_code,charge_type,max_amount,currency,valid_from,valid_to
+SUP-001,freight,45.00,GBP,2026-01-01,

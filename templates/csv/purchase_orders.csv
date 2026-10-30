@@ -1,0 +1,3 @@
+po_number,supplier_code,currency,issued_on,line_no,sku,description,quantity,unit,unit_price
+PO-10001,SUP-001,GBP,2026-09-01,1,BOX-12,12in shipping box,1000,each,0.420000
+PO-10001,SUP-001,GBP,2026-09-01,2,TAPE-48,48mm packing tape,200,roll,1.150000
