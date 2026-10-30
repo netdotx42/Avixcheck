@@ -9,3 +9,5 @@ next-env.d.ts
 !.env.example
 .DS_Store
 /backups/
+/test-results/
+/playwright-report/

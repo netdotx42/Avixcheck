@@ -11,6 +11,7 @@ import { logger, reportError } from "@/lib/logger";
  */
 export async function scheduleDailyJobs(now = new Date()): Promise<number> {
   const day = now.toISOString().slice(0, 10);
+  // qa-allow-withSystem: the scheduler must list every org to enqueue one job each; per-org work runs in withTenant.
   const orgs = await withSystem((tx) => tx.select({ id: organizations.id }).from(organizations));
   let created = 0;
   for (const { id } of orgs) {
