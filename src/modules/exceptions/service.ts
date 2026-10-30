@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { assertCan, can, type Role } from "@/lib/auth/permissions";
 import { dec, isDecimalString } from "@/lib/money/decimal";
 import { DomainError } from "@/lib/orgs";
+import { releaseInvoiceBillings } from "../checks/balances";
 import {
   DECISION_STATUS,
   decisionsFor,
@@ -218,6 +219,10 @@ export async function decideException(actor: Actor, input: DecideInput) {
         invoiceId: e.invoiceId,
       },
     });
+    if (status === "rejected_invoice") {
+      // A rejected invoice must stop consuming PO balance, in the same transaction as the decision.
+      await releaseInvoiceBillings(tx, { orgId: actor.orgId, invoiceId: e.invoiceId, actorUserId: actor.userId, reason: `Invoice rejected via exception ${e.id}` });
+    }
     const invoiceStatus = await recomputeInvoiceStatus(tx, actor.orgId, e.invoiceId, actor.userId);
     return { exception: updated, invoiceStatus };
   });

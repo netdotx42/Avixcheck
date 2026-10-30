@@ -359,6 +359,11 @@ export const invoices = pgTable(
     /** Raw model output, stored for audit; never trusted without validation. */
     extractionRaw: jsonb("extraction_raw"),
     failureReason: text("failure_reason"),
+    /**
+     * Outcome of the deterministic matcher for a given invoice revision (see
+     * src/modules/matching/types.ts `MatchResult`). Read by the check run.
+     */
+    matchResult: jsonb("match_result"),
     /** Optimistic concurrency for edits. */
     revision: integer("revision").notNull().default(1),
     createdBy: uuid("created_by").references(() => users.id),
