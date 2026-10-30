@@ -25,6 +25,7 @@ export async function seedDemo(opts: { appEnv: string; ownerUserId?: string; own
   let ownerId = opts.ownerUserId;
   if (!ownerId) {
     const email = (opts.ownerEmail ?? "demo-admin@avixcheck.invalid").toLowerCase();
+    // qa-allow-withSystem: users is a global (non-tenant) table; the demo owner exists before any org.
     ownerId = await withSystem(async (tx) => {
       const [u] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
       if (u) return u.id;
@@ -33,6 +34,7 @@ export async function seedDemo(opts: { appEnv: string; ownerUserId?: string; own
     });
   }
 
+  // qa-allow-withSystem: finds the owner's existing demo org across tenants; filters are server-side constants, not request input.
   const existing = await withSystem((tx) =>
     tx
       .select({ id: organizations.id })
