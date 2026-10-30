@@ -86,6 +86,22 @@ function same(a: unknown, b: unknown) {
   return String(x) === String(y);
 }
 
+/** Fields an invoice must have before it can be matched and checked. */
+export function missingRequired(
+  h: { supplierNameRaw: string | null; invoiceNumber: string | null; invoiceDate: string | null; currency: string | null; total: string | null },
+  lines: { amount: string | null }[],
+): string[] {
+  const missing: string[] = [];
+  if (!h.supplierNameRaw) missing.push("supplier name");
+  if (!h.invoiceNumber) missing.push("invoice number");
+  if (!h.invoiceDate) missing.push("invoice date");
+  if (!h.currency) missing.push("currency");
+  if (!h.total) missing.push("total");
+  if (lines.length === 0) missing.push("at least one line item");
+  else if (lines.some((l) => l.amount === null)) missing.push("line amounts");
+  return missing;
+}
+
 /**
  * Apply a reviewer's corrections to an invoice's header and lines.
  * - Optimistic concurrency via `expectedRevision`; the invoice row is locked.
@@ -157,14 +173,21 @@ export async function correctInvoice(actor: Actor, invoiceId: string, expectedRe
       }
     }
 
-    if (Object.keys(changedHeader).length === 0 && lineChanges.length === 0 && removed.length === 0) {
-      return { revision: inv.revision, changed: false };
+    const changed = Object.keys(changedHeader).length > 0 || lineChanges.length > 0 || removed.length > 0;
+    const missing = missingRequired(data.header, data.lines);
+    // Saving unchanged values on an invoice under extraction review confirms them as correct.
+    const confirming = !changed && inv.status === "extraction_review";
+    if (!changed && !confirming) return { revision: inv.revision, changed: false, confirmed: false, missing };
+    if (confirming && missing.length) {
+      throw new DomainError(`These values are still missing: ${missing.join(", ")}. Fill them in from the document before confirming.`, "missing_required");
     }
 
     const revision = inv.revision + 1;
+    // Incomplete invoices stay in review; they never reach matching or checks with missing data.
+    const status = missing.length ? "extraction_review" : "matching";
     await tx
       .update(invoices)
-      .set({ ...data.header, revision, status: "matching", failureReason: null, supplierId: null, purchaseOrderId: null, updatedAt: new Date() })
+      .set({ ...data.header, revision, status, failureReason: null, supplierId: null, purchaseOrderId: null, updatedAt: new Date() })
       .where(eq(invoices.id, invoiceId));
 
     if (Object.keys(changedHeader).length) {
@@ -176,15 +199,20 @@ export async function correctInvoice(actor: Actor, invoiceId: string, expectedRe
     for (const r of removed) {
       await audit(tx, { orgId: actor.orgId, actorUserId: actor.userId, action: "invoice.line_corrected", entityType: "invoice_line", entityId: r.id, data: { invoiceId, revision, lineNo: r.lineNo, change: "removed" }, requestId: actor.requestId });
     }
+    if (confirming) {
+      await audit(tx, { orgId: actor.orgId, actorUserId: actor.userId, action: "invoice.extraction_confirmed", entityType: "invoice", entityId: invoiceId, data: { revision }, requestId: actor.requestId });
+    }
+    if (missing.length) return { revision, changed, confirmed: false, missing };
 
-    // The correction resolves any open extraction review for this invoice.
+    // The correction (or confirmation) resolves any open extraction review for this invoice.
+    const reason = confirming ? `Extracted values confirmed by reviewer (revision ${revision})` : `Resolved by manual correction (revision ${revision})`;
     const resolved = await tx
       .update(exceptions)
-      .set({ status: "dismissed", decisionReason: `Resolved by manual correction (revision ${revision})`, decidedBy: actor.userId, decidedAt: new Date(), revision: sql`${exceptions.revision} + 1`, updatedAt: new Date() })
+      .set({ status: "dismissed", decisionReason: reason, decidedBy: actor.userId, decidedAt: new Date(), revision: sql`${exceptions.revision} + 1`, updatedAt: new Date() })
       .where(and(eq(exceptions.invoiceId, invoiceId), eq(exceptions.kind, "extraction_review"), inArray(exceptions.status, ["open", "in_review"])))
       .returning({ id: exceptions.id });
     for (const e of resolved) {
-      await audit(tx, { orgId: actor.orgId, actorUserId: actor.userId, action: "exception.decided", entityType: "exception", entityId: e.id, data: { invoiceId, status: "dismissed", reason: "manual_correction", revision }, requestId: actor.requestId });
+      await audit(tx, { orgId: actor.orgId, actorUserId: actor.userId, action: "exception.decided", entityType: "exception", entityId: e.id, data: { invoiceId, status: "dismissed", reason: confirming ? "extraction_confirmed" : "manual_correction", revision }, requestId: actor.requestId });
     }
 
     await enqueue(tx, {
@@ -194,6 +222,6 @@ export async function correctInvoice(actor: Actor, invoiceId: string, expectedRe
       idempotencyKey: idempotencyKey(actor.orgId, JOB_TYPES.matchInvoice, invoiceId, revision),
       createdBy: actor.userId,
     });
-    return { revision, changed: true };
+    return { revision, changed, confirmed: confirming, missing };
   });
 }
