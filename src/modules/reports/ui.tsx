@@ -220,7 +220,7 @@ export function FailuresCard({ failures, canRecover }: { failures: FailureSummar
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/invoices?status=failed" className="btn btn-secondary">View failed invoices</Link>
-            <Link href="/exceptions?kind=processing_failure" className="btn btn-secondary">Failure exceptions</Link>
+            <Link href="/exceptions?type=processing_failure" className="btn btn-secondary">Failure exceptions</Link>
             {canRecover && failures.failedJobs > 0 && (
               <Link href="/settings" className="btn btn-primary"><AlertTriangle aria-hidden className="size-4" />Recover failed jobs</Link>
             )}
