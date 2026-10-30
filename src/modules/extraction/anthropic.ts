@@ -26,67 +26,75 @@ Rules:
 const FALLBACK_MODELS = new Set(["claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"]);
 
 let client: Anthropic | undefined;
-function anthropic(): Anthropic {
-  requireIntegration("aiExtraction");
+function defaultClient(): Anthropic {
   // maxRetries: transient errors are retried by the durable job queue with backoff instead.
   client ??= new Anthropic({ apiKey: env().ANTHROPIC_API_KEY, maxRetries: 1, timeout: 10 * 60 * 1000 });
   return client;
 }
 
-export const anthropicExtractionProvider: ExtractionProvider = {
-  name: "anthropic",
-  configured: () => integrationStatus().find((i) => i.key === "aiExtraction")?.configured ?? false,
-  missing: () => integrationStatus().find((i) => i.key === "aiExtraction")?.missing ?? [],
-  async extract(pdf: Buffer): Promise<ProviderResult> {
-    const model = env().EXTRACTION_MODEL;
-    let response: Anthropic.Beta.BetaMessage;
-    try {
-      const stream = anthropic().beta.messages.stream({
-        model,
-        max_tokens: 32000,
-        system: EXTRACTION_SYSTEM_PROMPT,
-        ...(FALLBACK_MODELS.has(model) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
-        output_config: { format: { type: "json_schema", schema: EXTRACTION_JSON_SCHEMA as unknown as Record<string, unknown> } },
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf.toString("base64") } },
-              { type: "text", text: "Extract the invoice header and every line item from the attached document." },
-            ],
-          },
-        ],
-      });
-      response = await stream.finalMessage();
-    } catch (err) {
-      if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError || err instanceof Anthropic.APIConnectionError) {
-        throw new ExtractionTransientError(`Extraction provider temporarily unavailable: ${err.message}`);
+/** `makeClient` exists so tests can point the real SDK at a recorded HTTP transport. */
+export function createAnthropicExtractionProvider(makeClient: () => Anthropic = defaultClient): ExtractionProvider {
+  const anthropic = () => {
+    requireIntegration("aiExtraction");
+    return makeClient();
+  };
+  return {
+    name: "anthropic",
+    configured: () => integrationStatus().find((i) => i.key === "aiExtraction")?.configured ?? false,
+    missing: () => integrationStatus().find((i) => i.key === "aiExtraction")?.missing ?? [],
+    async extract(pdf: Buffer): Promise<ProviderResult> {
+      const model = env().EXTRACTION_MODEL;
+      let response: Anthropic.Beta.BetaMessage;
+      try {
+        const stream = anthropic().beta.messages.stream({
+          model,
+          max_tokens: 32000,
+          system: EXTRACTION_SYSTEM_PROMPT,
+          ...(FALLBACK_MODELS.has(model) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
+          output_config: { format: { type: "json_schema", schema: EXTRACTION_JSON_SCHEMA as unknown as Record<string, unknown> } },
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf.toString("base64") } },
+                { type: "text", text: "Extract the invoice header and every line item from the attached document." },
+              ],
+            },
+          ],
+        });
+        response = await stream.finalMessage();
+      } catch (err) {
+        if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError || err instanceof Anthropic.APIConnectionError) {
+          throw new ExtractionTransientError(`Extraction provider temporarily unavailable: ${err.message}`);
+        }
+        if (err instanceof Anthropic.APIError && (err.status === 529 || err.status === 408 || err.status === 409)) {
+          throw new ExtractionTransientError(`Extraction provider temporarily unavailable (${err.status})`);
+        }
+        throw err;
       }
-      if (err instanceof Anthropic.APIError && (err.status === 529 || err.status === 408 || err.status === 409)) {
-        throw new ExtractionTransientError(`Extraction provider temporarily unavailable (${err.status})`);
-      }
-      throw err;
-    }
 
-    const servedBy = response.model;
-    if (response.stop_reason === "refusal") {
-      return { kind: "incomplete", model: servedBy, reason: `The extraction model declined to process this document${response.stop_details?.category ? ` (${response.stop_details.category})` : ""}.` };
-    }
-    if (response.stop_reason === "max_tokens") {
-      return { kind: "incomplete", model: servedBy, reason: "The extraction output was cut off (document too long)." };
-    }
-    const text = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
-    let output: unknown;
-    try {
-      output = JSON.parse(text);
-    } catch {
-      return { kind: "incomplete", model: servedBy, reason: "The extraction output was not valid JSON." };
-    }
-    return {
-      kind: "ok",
-      model: servedBy,
-      output,
-      usage: { input_tokens: response.usage.input_tokens, output_tokens: response.usage.output_tokens },
-    };
-  },
-};
+      const servedBy = response.model;
+      if (response.stop_reason === "refusal") {
+        return { kind: "incomplete", model: servedBy, reason: `The extraction model declined to process this document${response.stop_details?.category ? ` (${response.stop_details.category})` : ""}.` };
+      }
+      if (response.stop_reason === "max_tokens") {
+        return { kind: "incomplete", model: servedBy, reason: "The extraction output was cut off (document too long)." };
+      }
+      const text = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
+      let output: unknown;
+      try {
+        output = JSON.parse(text);
+      } catch {
+        return { kind: "incomplete", model: servedBy, reason: "The extraction output was not valid JSON." };
+      }
+      return {
+        kind: "ok",
+        model: servedBy,
+        output,
+        usage: { input_tokens: response.usage.input_tokens, output_tokens: response.usage.output_tokens },
+      };
+    },
+  };
+}
+
+export const anthropicExtractionProvider = createAnthropicExtractionProvider();

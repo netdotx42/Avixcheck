@@ -7,7 +7,7 @@ import { DomainError } from "@/lib/orgs";
 import { correctInvoice } from "@/modules/documents/correction";
 import { retryInvoiceProcessing } from "@/modules/documents/service";
 
-export type CorrectionState = { ok: true; revision: number; changed: boolean } | { ok: false; error: string; conflict?: boolean } | null;
+export type CorrectionState = { ok: true; revision: number; changed: boolean; confirmed: boolean; missing: string[] } | { ok: false; error: string; conflict?: boolean } | null;
 
 const correctionForm = z.object({ invoiceId: z.string().uuid(), revision: z.coerce.number().int().positive(), payload: z.string().max(2_000_000) });
 

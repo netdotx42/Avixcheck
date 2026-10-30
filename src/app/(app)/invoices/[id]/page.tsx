@@ -123,6 +123,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               <InvoiceEditor
                 key={inv.revision}
                 editable={canEdit}
+                inReview={inv.status === "extraction_review"}
                 invoiceId={inv.id}
                 revision={inv.revision}
                 header={{

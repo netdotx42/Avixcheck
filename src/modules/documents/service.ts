@@ -56,7 +56,10 @@ export async function uploadInvoiceDocument(actor: Actor, file: { bytes: Buffer;
   const name = safeFileName(file.name);
 
   const existing = await findBySha(actor.orgId, sha);
-  if (existing) return { ...existing, duplicate: true };
+  if (existing) {
+    await auditDuplicate(actor, existing.invoiceId, sha, name);
+    return { ...existing, duplicate: true };
+  }
 
   const documentId = randomUUID();
   const key = objectKey(actor.orgId, "documents", documentId, "pdf");
@@ -112,9 +115,17 @@ export async function uploadInvoiceDocument(actor: Actor, file: { bytes: Buffer;
     await d.storage.delete(key).catch(() => undefined);
     const winner = await findBySha(actor.orgId, sha);
     if (!winner) throw new Error("Duplicate document detected but the original could not be found");
+    await auditDuplicate(actor, winner.invoiceId, sha, name);
     return { ...winner, duplicate: true };
   }
   return { ...created, duplicate: false };
+}
+
+/** A re-upload of a file the org already has is recorded, so repeated submissions stay visible in the audit trail. */
+async function auditDuplicate(actor: Actor, invoiceId: string, sha: string, name: string) {
+  await withTenant(actor.orgId, (tx) =>
+    audit(tx, { orgId: actor.orgId, actorUserId: actor.userId, action: "document.duplicate_upload", entityType: "invoice", entityId: invoiceId, data: { sha256: sha, originalName: name }, requestId: actor.requestId }),
+  );
 }
 
 async function findBySha(orgId: string, sha: string) {

@@ -199,6 +199,8 @@ describe("upload", () => {
     const a = await svc.uploadInvoiceDocument(actor, { bytes, name: "a.pdf" });
     const b = await svc.uploadInvoiceDocument(actor, { bytes, name: "copy.pdf" });
     expect(b).toEqual({ ...a, duplicate: true });
+    const dupAudit = await withTenant(org.id, (tx) => tx.select().from(auditEvents).where(eq(auditEvents.action, "document.duplicate_upload")));
+    expect(dupAudit.map((e) => e.entityId)).toEqual([a.invoiceId]);
     // Concurrent duplicates: exactly one row, no orphaned objects.
     const c = pdf();
     const results = await Promise.all(Array.from({ length: 5 }, () => svc.uploadInvoiceDocument(actor, { bytes: c, name: "c.pdf" })));
@@ -421,7 +423,7 @@ describe("manual correction", () => {
     input.lines[0]!.taxRate = "20";
     input.lines.push({ id: null as unknown as string, lineType: "charge", chargeType: "freight", sku: null, description: "Delivery", quantity: "1", unit: "each", unitPrice: "0", amount: "0", taxRate: "20", poLineRef: null });
     const res = await correctInvoice(actor, invoiceId, 1, input);
-    expect(res).toEqual({ revision: 2, changed: true });
+    expect(res).toEqual({ revision: 2, changed: true, confirmed: false, missing: [] });
     const inv = await getInvoice(org.id, invoiceId);
     expect(inv).toMatchObject({ status: "matching", revision: 2, invoiceDate: "2026-04-03", total: "1440.0000" });
     const lines = await withTenant(org.id, (tx) => tx.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, invoiceId)).orderBy(invoiceLines.lineNo));
@@ -453,7 +455,40 @@ describe("manual correction", () => {
     await expect(correctInvoice(actor, invoiceId, 1, bad)).rejects.toMatchObject({ code: "invalid_correction" });
     const viewer = await member(org.id, "viewer");
     await expect(correctInvoice(viewer, invoiceId, 1, correctionFrom(detail))).rejects.toThrow(/invoice.edit/);
-    expect(await correctInvoice(actor, invoiceId, 1, correctionFrom(detail))).toEqual({ revision: 1, changed: false });
+    // Unchanged save on an invoice in review is a confirmation, refused while required values are missing.
+    await expect(correctInvoice(actor, invoiceId, 1, correctionFrom(detail))).rejects.toMatchObject({ code: "missing_required" });
+  });
+
+  it("confirms a flagged but correct extraction without edits and sends it to matching", async () => {
+    const { org, actor, invoiceId } = await extractedInvoice("C5", "invoice-confident");
+    // Simulate a confident extraction that a rule still flagged (e.g. an extractor warning).
+    await withTenant(org.id, (tx) => tx.update(invoices).set({ status: "extraction_review" }).where(eq(invoices.id, invoiceId)));
+    await withSystem((tx) => tx.delete(jobs).where(and(eq(jobs.orgId, org.id), eq(jobs.type, JOB_TYPES.matchInvoice))));
+    await withTenant(org.id, (tx) => tx.insert(exceptions).values({ orgId: org.id, invoiceId, kind: "extraction_review", title: "Check extracted values" }));
+    const detail = (await getInvoiceDetail(org.id, invoiceId))!;
+    const res = await correctInvoice(actor, invoiceId, 1, correctionFrom(detail));
+    expect(res).toEqual({ revision: 2, changed: false, confirmed: true, missing: [] });
+    expect((await getInvoice(org.id, invoiceId)).status).toBe("matching");
+    expect((await getExceptions(org.id, invoiceId)).map((e) => [e.status, e.decisionReason])).toEqual([["dismissed", "Extracted values confirmed by reviewer (revision 2)"]]);
+    expect((await getJobs(org.id, JOB_TYPES.matchInvoice)).map((j) => j.idempotencyKey)).toEqual([`${org.id}:invoice.match:${invoiceId}:2`]);
+    const actions = (await withTenant(org.id, (tx) => tx.select().from(auditEvents))).map((e) => e.action);
+    expect(actions).toContain("invoice.extraction_confirmed");
+    // Saving again on a matched invoice with no changes is a no-op.
+    expect(await correctInvoice(actor, invoiceId, 2, correctionFrom((await getInvoiceDetail(org.id, invoiceId))!))).toMatchObject({ revision: 2, changed: false, confirmed: false });
+  });
+
+  it("keeps a partially corrected invoice in review until required values are present", async () => {
+    const { org, actor, invoiceId, detail } = await extractedInvoice("C6");
+    const input = correctionFrom(detail);
+    input.header.invoiceDate = "2026-04-03";
+    const res = await correctInvoice(actor, invoiceId, 1, input);
+    expect(res).toMatchObject({ revision: 2, changed: true, missing: ["total"] });
+    expect((await getInvoice(org.id, invoiceId)).status).toBe("extraction_review");
+    expect(await getJobs(org.id, JOB_TYPES.matchInvoice)).toHaveLength(0);
+    expect((await getExceptions(org.id, invoiceId)).map((e) => e.status)).toEqual(["open"]);
+    input.header.total = "1200";
+    expect(await correctInvoice(actor, invoiceId, 2, input)).toMatchObject({ revision: 3, missing: [] });
+    expect((await getInvoice(org.id, invoiceId)).status).toBe("matching");
   });
 
   it("is tenant-isolated: another org cannot read, correct or preview the invoice", async () => {
