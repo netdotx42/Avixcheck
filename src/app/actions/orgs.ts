@@ -5,10 +5,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ACTIVE_ORG_COOKIE, requireOrg } from "@/lib/auth/context";
 import { getSessionUser } from "@/lib/auth/session";
-import { acceptInvitation, changeMemberRole, createInvitation, createOrganization, removeMember, revokeInvitation } from "@/lib/orgs";
+import { INVITE_TTL_DAYS, acceptInvitation, changeMemberRole, createInvitation, createOrganization, removeMember, revokeInvitation } from "@/lib/orgs";
 import { rateLimit } from "@/lib/ratelimit";
 import { enforceRateLimit } from "@/lib/rate-limit-policies";
 import { env } from "@/env";
+import { invitationEmail, sendEmail } from "@/lib/email/resend";
+import { logger } from "@/lib/logger";
 
 const role = z.enum(["admin", "reviewer", "viewer"]);
 const cookieOpts = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 365 };
@@ -27,7 +29,8 @@ export async function createOrgAction(formData: FormData) {
   redirect("/overview");
 }
 
-export type InviteState = { ok: true; link: string; email: string } | { ok: false; error: string } | null;
+export type InviteDelivery = "sent" | "not_configured" | "failed";
+export type InviteState = { ok: true; link: string; email: string; delivery: InviteDelivery; deliveryError?: string } | { ok: false; error: string } | null;
 
 export async function inviteMemberAction(_prev: InviteState, formData: FormData): Promise<InviteState> {
   try {
@@ -39,7 +42,20 @@ export async function inviteMemberAction(_prev: InviteState, formData: FormData)
     );
     revalidatePath("/settings");
     const base = env().APP_URL ?? "";
-    return { ok: true, link: `${base}/invite/${token}`, email: invitation.email };
+    const link = `${base}/invite/${token}`;
+    const sent = await sendEmail({
+      to: invitation.email,
+      ...invitationEmail({ orgName: ctx.orgName, role: invitation.role, link, expiresDays: INVITE_TTL_DAYS }),
+      idempotencyKey: `invitation-${invitation.id}`,
+    });
+    if (sent.status === "sent") logger.info({ orgId: ctx.orgId, invitationId: invitation.id, emailId: sent.id }, "invitation email sent");
+    return {
+      ok: true,
+      link,
+      email: invitation.email,
+      delivery: sent.status,
+      ...(sent.status === "failed" ? { deliveryError: sent.detail } : {}),
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not create invitation" };
   }
