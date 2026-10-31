@@ -13,14 +13,16 @@ Audience: whoever deploys and operates AvixCheck. Read `docs/ARCHITECTURE.md` fo
 | Release | `npm run db:migrate` | Once per deploy, before new web/worker code starts. |
 | Backup | `npm run ops:backup` | Daily, scheduled (cron). |
 | Restore drill | `npm run ops:restore-verify -- <manifest>` | Monthly and after any backup change. |
+| Live verification | `npm run ops:verify-live` | After provisioning and after every credential change: checks each real service (`docs/GO-LIVE.md` §5). |
 | PostgreSQL 16 | managed | System of record **and** job queue. |
 | S3-compatible bucket | managed | Private documents and exports. |
 | ClamAV (`clamd`) | container | Malware scanning, TCP 3310, private network only. |
 | Clerk | SaaS | Identity, MFA, sessions. |
 | Anthropic API | SaaS | Invoice extraction only. |
 | Sentry | SaaS (optional) | Error monitoring. |
+| Resend | SaaS (optional) | Invitation email. Without it admins share invitation links. |
 
-All processes use the same Docker image (`Dockerfile`). Deployment descriptors: `render.yaml` (Render Blueprint, primary) and `fly.toml` (Fly.io alternative).
+All processes use the same Docker image (`Dockerfile`). Deployment descriptors: `render.yaml` (Render Blueprint, primary) and `fly.toml` + `deploy/fly/clamav.toml` (Fly.io alternative).
 
 ## 2. First-time setup
 
@@ -59,10 +61,13 @@ fly machine run . --schedule daily --region lhr --env NODE_ENV=production \
   --command "npm run ops:backup -- --out /app/backups"
 ```
 
+### Release pipeline
+`.github/workflows/deploy.yml` (Actions → Deploy → Run workflow) builds the image for one commit, deploys it to `staging` or `production` (GitHub Environments; production should require a reviewer and only allow `main`), waits until `/api/health` reports that commit as `release`, and runs `ops:verify-live --only app` against the live URL. Setup: `docs/GO-LIVE.md` §3.
+
 ### Every deploy
 - CI green on the commit (lint, typecheck, migration drift check, tests incl. backup/restore, build, `npm audit`).
 - Migrations are additive. A migration that rewrites or drops data needs a backup taken immediately before (`npm run ops:backup`) and a written rollback plan.
-- After deploy: `GET /api/health` returns `200` with `"status":"ready"`; a test upload as a demo org reaches `scanning`/`extracting` in a staging environment.
+- After deploy: `GET /api/health` returns `200` with `"status":"ready"` and the new `release`; `npm run ops:verify-live` passes in the platform shell (`docs/GO-LIVE.md` §5); a test upload reaches `scanning`/`extracting` in staging.
 - **Rollback:** redeploy the previous image. Migrations are not reversed automatically; because they are additive, older code keeps working. If a migration must be undone, restore (§6) or write a forward fix.
 
 ## 4. Monitoring and logs
@@ -163,7 +168,7 @@ This flow is exercised in CI by `tests/ops-backup.test.ts` (backup as a non-supe
 
 ## 10. Production readiness checklist
 
-Tick each item with evidence (link, screenshot or log line) before calling an environment production-ready.
+Tick each item with evidence (link, screenshot or log line) before calling an environment production-ready. `npm run ops:verify-live` produces the evidence for the integration items; `docs/GO-LIVE.md` §8 is the full go-live list.
 
 - [ ] CI green on the release commit: lint, typecheck, migration drift, all tests (financial calculations, permissions, tenant isolation, duplicates, partial billing, credit notes, uncertain extraction, concurrency, retries, backup/restore), build, dependency audit.
 - [ ] End-to-end upload → scan → extraction → matching → review → export verified in staging with real integrations (not fixtures).

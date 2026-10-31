@@ -422,7 +422,11 @@ export async function checkApp(appUrl: string | undefined, fetchImpl: typeof fet
       const html = await res.text();
       if (!/sign[- ]?in/i.test(html)) throw new Error("/invoices returned 200 to an anonymous request");
     }
-    return `anonymous /invoices → ${res.status}`;
+    const location = res.headers.get("location") ?? "";
+    if (res.status >= 300 && res.status < 400 && !/sign-?in/i.test(location)) {
+      return { status: "warn", detail: `anonymous /invoices → ${res.status} ${location} (expected a redirect to sign-in)` };
+    }
+    return `anonymous /invoices → ${res.status}${location ? ` ${location}` : ""}`;
   });
   return s.list;
 }

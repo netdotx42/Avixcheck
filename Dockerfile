@@ -16,7 +16,9 @@ RUN npm run build
 
 FROM node:22.20-bookworm-slim AS run
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+# Set by the deploy pipeline to the git SHA; reported by /api/health and attached to Sentry events.
+ARG APP_RELEASE=
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 APP_RELEASE=$APP_RELEASE
 # PostgreSQL 16 client tools (pg_dump/pg_restore must match the server major version) from the PGDG repo.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl gnupg \

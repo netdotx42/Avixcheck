@@ -103,6 +103,22 @@ jobs:
       - name: Service logs on failure
         if: failure()
         run: docker ps -a; docker logs s3 2>&1 | tail -50; docker logs clamav 2>&1 | tail -50
+      - name: Go-live verifier against the real storage, ClamAV and database services
+        env:
+          PGPASSWORD: postgres
+          DATABASE_URL: postgres://avix_verify:avix_verify@localhost:5432/avix_verify
+          S3_ENDPOINT: http://localhost:9000
+          S3_REGION: us-east-1
+          S3_BUCKET: avixcheck-e2e
+          S3_ACCESS_KEY_ID: avixminio
+          S3_SECRET_ACCESS_KEY: avixminio-secret
+          S3_FORCE_PATH_STYLE: "true"
+          CLAMAV_HOST: localhost
+          APP_ENV: staging
+        run: |
+          psql -h localhost -U postgres -c "create role avix_verify login password 'avix_verify' nosuperuser nobypassrls" -c "create database avix_verify owner avix_verify"
+          npm run db:migrate
+          npm run ops:verify-live -- --only database,storage,malwareScan --report /tmp/e2e-results/golive-verify.json
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -111,3 +127,41 @@ jobs:
           path: |
             /tmp/e2e-results
             /tmp/e2e-report
+
+  # Builds the production image and boots it, so a broken Dockerfile fails here
+  # instead of on the hosting platform.
+  image:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        run: docker build --build-arg APP_RELEASE=${{ github.sha }} -t avixcheck:ci .
+      - name: Create a non-superuser app role
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -c "create role avix_app login password 'avix_app' nosuperuser nobypassrls" -c "create database avixcheck owner avix_app"
+      - name: Run migrations from the image
+        run: docker run --rm --network host -e DATABASE_URL=postgres://avix_app:avix_app@localhost:5432/avixcheck avixcheck:ci npm run db:migrate
+      - name: Boot the web process and check health and the setup state
+        run: |
+          docker run -d --name web --network host -e APP_ENV=staging -e DATABASE_URL=postgres://avix_app:avix_app@localhost:5432/avixcheck avixcheck:ci
+          for i in $(seq 60); do curl -fsS http://localhost:3000/api/health -o health.json && break; sleep 2; done
+          cat health.json; echo
+          # No integrations are configured here, so the app must say so rather than claim to be ready.
+          jq -e '.database == "ok" and .status == "degraded" and .release == "${{ github.sha }}"' health.json
+          curl -fsS -o /dev/null -w "%{http_code}\n" http://localhost:3000/setup
+          curl -sSI http://localhost:3000/sign-in | grep -i "strict-transport-security"
+      - name: Ops scripts run inside the image
+        run: docker run --rm --network host -e DATABASE_URL=postgres://avix_app:avix_app@localhost:5432/avixcheck avixcheck:ci npm run ops:verify-live -- --only database --report /tmp/verify.json
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs web 2>&1 | tail -100
