@@ -7,3 +7,4 @@ backups
 coverage
 *.dump
 golive-evidence
+index.html
