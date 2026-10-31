@@ -12,3 +12,4 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /golive-evidence/
+/site-dist/
