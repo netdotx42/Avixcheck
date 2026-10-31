@@ -78,9 +78,13 @@ jobs:
           set -x
           # MinIO no longer publishes images on Docker Hub; use its quay.io mirror,
           # falling back to SeaweedFS (also a real S3-compatible server) if that pull fails.
+          # SeaweedFS allows anonymous access unless an identity is configured, so give it
+          # one: the bucket must be private and signed URLs must really be verified.
+          mkdir -p /tmp/seaweed
+          echo '{"identities":[{"name":"app","credentials":[{"accessKey":"avixminio","secretKey":"avixminio-secret"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' > /tmp/seaweed/s3.json
           docker run -d --name s3 -p 9000:9000 -e MINIO_ROOT_USER=avixminio -e MINIO_ROOT_PASSWORD=avixminio-secret \
               quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server /data \
-            || docker run -d --name s3 -p 9000:8333 chrislusf/seaweedfs:3.80 server -s3
+            || docker run -d --name s3 -p 9000:8333 -v /tmp/seaweed:/cfg chrislusf/seaweedfs:3.80 server -s3 -s3.config=/cfg/s3.json
           docker run -d --name clamav -p 3310:3310 clamav/clamav:1.4
       - run: npx playwright install --with-deps chromium
       - name: Wait for storage and create the private bucket
