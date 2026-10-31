@@ -253,7 +253,7 @@ pre.csv { background: var(--bg); border: 1px solid var(--border); border-radius:
 </style>
 
 <div class="band" role="note">
-  <span><strong>Not connected to a live AvixCheck service yet.</strong> This preview holds no data. Every screen shows what the app shows with an empty organisation, plus the real rules and settings it runs on.</span>
+  <span><strong>Product preview.</strong> No data is shown. Each screen is what a new organisation sees, plus the rules and settings AvixCheck works by.</span>
 </div>
 
 <div class="shell">
@@ -374,13 +374,13 @@ let decKind = "discrepancy", decExposure = true;
 
 const header = (t, d, a = "") => `<div class="ph"><div><h1>${t}</h1>${d ? `<p>${d}</p>` : ""}</div>${a ? `<div class="btn-row">${a}</div>` : ""}</div>`;
 const empty = (ic, t, b, a = "") => `<div class="card empty">${icon(ic)}<h2>${t}</h2><p>${b}</p>${a}</div>`;
-const notLive = (what) => `<div class="note info">${what} run on the deployed AvixCheck service. It will appear here once the service is live and connected.</div>`;
+const notLive = (what) => `<div class="note info">${what} happen in your AvixCheck account. Results appear here once your organisation is set up.</div>`;
 
 function viewOverview() {
   const steps = [["upload", "Upload", "PDF, virus-scanned"], ["invoices", "Extraction", "Fields with confidence"], ["invoices", "Matching", "Supplier, PO, agreement"], ["exceptions", "Exceptions", "People decide"], ["reports", "Reports", "Exposure and savings"]];
   return `${header("Overview", "What needs attention across received invoices.")}
     <div class="flow">${steps.map(([h, t, d], i) => `<a href="#${h}"><span class="n">Step ${i + 1}</span><strong>${t}</strong><span class="d">${d}</span></a>`).join("")}</div>
-    ${empty("gauge", "No invoices yet", "Invoice volume, unresolved discrepancies by type and age, and processing failures appear here once invoices are uploaded to the live service.", can("invoice.upload") ? `<a class="btn btn-primary" href="#upload">${icon("upload")}Upload invoices</a>` : "")}`;
+    ${empty("gauge", "No invoices yet", "Invoice volume, unresolved discrepancies by type and age, and processing failures appear here once invoices are uploaded.", can("invoice.upload") ? `<a class="btn btn-primary" href="#upload">${icon("upload")}Upload invoices</a>` : "")}`;
 }
 
 function viewInvoices() {
@@ -453,9 +453,9 @@ function viewReports() {
 }
 
 function viewRules() {
-  return `${header("Checks and settings", "The deterministic rules every invoice is checked against (rules@1.0.0), and the default organisation settings.")}
+  return `${header("Checks and settings", "The rules every invoice is checked against, and the default organisation settings.")}
     <div class="card flush"><div class="card-h"><h2>Discrepancy rules</h2></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Finding</th><th>When it is raised</th></tr></thead><tbody>
-      ${RULES.map(([k, l, d]) => `<tr><td><strong>${l}</strong><div class="xs muted mono">${k}</div></td><td>${d}</td></tr>`).join("")}</tbody></table></div>
+      ${RULES.map(([k, l, d]) => `<tr><td><strong>${l}</strong></td><td>${d}</td></tr>`).join("")}</tbody></table></div>
       <p class="xs muted" style="padding:0 20px 16px">Amounts are potential exposure in invoice currency, never realised savings. Overlapping rules net each other out so amounts can be summed.</p></div>
     <div class="card flush"><div class="card-h"><h2>Default settings</h2><span class="xs muted">Each organisation can change these</span></div><div class="tbl-wrap"><table class="tbl"><tbody>
       ${SETTINGS.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join("")}</tbody></table></div></div>`;
