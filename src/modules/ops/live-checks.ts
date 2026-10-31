@@ -386,7 +386,7 @@ export async function checkEmail(emailTo: string | undefined, fetchImpl: typeof 
 
 // ─── Deployed app ────────────────────────────────────────────────────────────
 
-const REQUIRED_HEADERS = ["strict-transport-security", "x-frame-options", "x-content-type-options", "referrer-policy"];
+const REQUIRED_HEADERS = ["strict-transport-security", "content-security-policy", "x-frame-options", "x-content-type-options", "referrer-policy"];
 
 export async function checkApp(appUrl: string | undefined, fetchImpl: typeof fetch = fetch): Promise<CheckStep[]> {
   const base = (appUrl ?? env().APP_URL)?.replace(/\/$/, "");

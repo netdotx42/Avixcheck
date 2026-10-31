@@ -111,6 +111,7 @@ describe("Clerk check", () => {
 describe("app check", () => {
   const headers = {
     "strict-transport-security": "max-age=1",
+    "content-security-policy": "default-src 'self'",
     "x-frame-options": "DENY",
     "x-content-type-options": "nosniff",
     "referrer-policy": "strict-origin-when-cross-origin",
