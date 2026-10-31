@@ -6,7 +6,7 @@ import { can } from "@/lib/auth/permissions";
 import { listMembers } from "@/lib/orgs";
 import { withTenant } from "@/db/tenant";
 import { invitations, jobs } from "@/db/schema";
-import { integrationStatus, isConfigured } from "@/env";
+import { integrationStatus } from "@/env";
 import { formatDate } from "@/lib/format";
 import { changeRoleAction, removeMemberAction, revokeInvitationAction } from "@/app/actions/orgs";
 import { cancelJobAction, retryJobAction } from "@/app/actions/jobs";
@@ -73,7 +73,7 @@ export default async function SettingsPage() {
         {isAdmin && (
           <Card>
             <h2 className="mb-4 font-semibold">Invite people</h2>
-            <InviteForm emailConfigured={isConfigured("email")} />
+            <InviteForm />
             {pending.length > 0 && (
               <ul className="mt-5 divide-y divide-border text-sm">
                 {pending.map((i) => (

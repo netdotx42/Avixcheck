@@ -2,7 +2,7 @@
   "name": "avixcheck",
   "version": "0.1.0",
   "private": true,
-  "description": "AvixCheck — Every invoice. Checked.",
+  "description": "AvixCheck \u2014 Every invoice. Checked.",
   "engines": {
     "node": ">=20.11"
   },
@@ -21,7 +21,8 @@
     "test:e2e": "playwright test",
     "ops:backup": "tsx scripts/ops/backup.ts",
     "ops:restore-verify": "tsx scripts/ops/restore-verify.ts",
-    "ops:retention-run": "tsx scripts/ops/retention-run.ts"
+    "ops:retention-run": "tsx scripts/ops/retention-run.ts",
+    "ops:verify-live": "tsx scripts/ops/verify-live.ts"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.7",

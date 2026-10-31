@@ -2,7 +2,7 @@
 import { useActionState } from "react";
 import { inviteMemberAction, type InviteState } from "@/app/actions/orgs";
 
-export function InviteForm({ emailConfigured }: { emailConfigured: boolean }) {
+export function InviteForm() {
   const [state, action, pending] = useActionState<InviteState, FormData>(inviteMemberAction, null);
   return (
     <form action={action} className="space-y-3">
@@ -28,7 +28,10 @@ export function InviteForm({ emailConfigured }: { emailConfigured: boolean }) {
         <div role="status" className="rounded-md border border-border bg-bg p-3 text-sm">
           <p>
             Invitation created for {state.email}.{" "}
-            {emailConfigured ? "" : "Email delivery is not configured, so share this one-time link with them directly. It expires in 7 days."}
+            {state.delivery === "sent" && "An invitation email is on its way. You can also share this one-time link directly."}
+            {state.delivery === "not_configured" && "Email delivery is not configured, so share this one-time link with them directly."}
+            {state.delivery === "failed" && `The invitation email could not be sent (${state.deliveryError ?? "unknown error"}), so share this one-time link with them directly.`}{" "}
+            It expires in 7 days.
           </p>
           <code className="mt-2 block break-all text-xs text-focus">{state.link}</code>
         </div>

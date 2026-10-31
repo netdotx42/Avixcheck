@@ -47,7 +47,7 @@ export async function createOrganization(userId: string, input: { name: string; 
   });
 }
 
-const INVITE_TTL_DAYS = 7;
+export const INVITE_TTL_DAYS = 7;
 
 /** Create an invitation. Returns the raw token exactly once; only its hash is stored. */
 export async function createInvitation(actor: { userId: string; orgId: string; role: Role }, input: { email: string; role: Role }) {

@@ -1,6 +1,8 @@
 # Fly.io alternative to render.yaml. One image, two process groups.
 # Secrets: `fly secrets set DATABASE_URL=... CLERK_SECRET_KEY=...` (never in this file).
 # Backups: run as a scheduled machine, see docs/RUNBOOK.md §5.
+# ClamAV: a separate private app, see deploy/fly/clamav.toml (CLAMAV_HOST=avixcheck-clamav.internal).
+# Releases: .github/workflows/deploy.yml deploys the CI-built image with `fly deploy --image`.
 app = "avixcheck"
 primary_region = "lhr"
 

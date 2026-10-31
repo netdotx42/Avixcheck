@@ -32,7 +32,7 @@ export async function initMonitoring(service: "web" | "worker"): Promise<"sentry
   Sentry.init({
     dsn,
     environment: process.env.APP_ENV ?? "development",
-    release: process.env.APP_RELEASE || undefined,
+    release: process.env.APP_RELEASE || process.env.RENDER_GIT_COMMIT || undefined,
     serverName: service,
     tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0") || 0,
     // Invoice contents, extraction prompts/outputs, query parameters and request

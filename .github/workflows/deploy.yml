@@ -1,0 +1,120 @@
+# Release pipeline: build one image, deploy it to staging or production, and
+# verify the deployed app. Nothing here runs until the repository is set up
+# (see docs/GO-LIVE.md §3): it needs a GitHub Environment per target with the
+# secrets below, and production should require a reviewer.
+#
+#   Repository variable DEPLOY_TARGET: "render" or "fly"
+#   Environment variable APP_URL:       https://staging.example.com / https://app.example.com
+#   Environment secrets (Render):       RENDER_DEPLOY_HOOK_WEB, RENDER_DEPLOY_HOOK_WORKER
+#   Environment secrets (Fly):          FLY_API_TOKEN, and variable FLY_APP
+#
+# Application secrets (database, Clerk, S3, Anthropic, ...) live in the hosting
+# platform's secret manager, never in GitHub.
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [staging, production]
+        default: staging
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Production deploys must come from main
+        if: inputs.environment == 'production' && github.ref != 'refs/heads/main'
+        run: echo "::error::Production deploys must run from main (got ${{ github.ref }})" && exit 1
+      - id: meta
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        run: |
+          docker build --build-arg APP_RELEASE=${{ github.sha }} -t "${{ steps.meta.outputs.image }}" .
+          docker push "${{ steps.meta.outputs.image }}"
+
+  deploy:
+    needs: image
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.APP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployment settings
+        env:
+          TARGET: ${{ vars.DEPLOY_TARGET }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          [ -n "$APP_URL" ] || { echo "::error::Set the APP_URL variable on the ${{ inputs.environment }} environment"; exit 1; }
+          case "$TARGET" in render|fly) ;; *) echo "::error::Set repository variable DEPLOY_TARGET to render or fly"; exit 1;; esac
+
+      # Render builds the image itself from this commit (render.yaml). The deploy
+      # hook's pre-deploy command runs migrations before new code takes traffic.
+      - name: Deploy to Render
+        if: vars.DEPLOY_TARGET == 'render'
+        env:
+          HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+          HOOK_WORKER: ${{ secrets.RENDER_DEPLOY_HOOK_WORKER }}
+        run: |
+          [ -n "$HOOK_WEB" ] && [ -n "$HOOK_WORKER" ] || { echo "::error::RENDER_DEPLOY_HOOK_WEB / RENDER_DEPLOY_HOOK_WORKER are not set"; exit 1; }
+          curl -fsS -X POST "$HOOK_WEB&ref=${{ github.sha }}" -o /dev/null
+          curl -fsS -X POST "$HOOK_WORKER&ref=${{ github.sha }}" -o /dev/null
+          echo "Render deploys triggered for ${{ github.sha }}"
+
+      - name: Deploy to Fly.io
+        if: vars.DEPLOY_TARGET == 'fly'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: ${{ vars.FLY_APP }}
+        run: |
+          [ -n "$FLY_API_TOKEN" ] && [ -n "$FLY_APP" ] || { echo "::error::FLY_API_TOKEN secret / FLY_APP variable are not set"; exit 1; }
+          curl -fsSL https://fly.io/install.sh | sh
+          ~/.fly/bin/flyctl deploy --app "$FLY_APP" --image "${{ needs.image.outputs.image }}" \
+            --env APP_RELEASE=${{ github.sha }} --strategy rolling --wait-timeout 600
+
+      - name: Wait for the new release to serve traffic
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          for i in $(seq 90); do
+            release=$(curl -fsS "$APP_URL/api/health" | jq -r '.release // empty' || true)
+            [ "$release" = "${{ github.sha }}" ] && { echo "release ${{ github.sha }} is live"; exit 0; }
+            sleep 10
+          done
+          echo "::error::$APP_URL/api/health did not report release ${{ github.sha }} within 15 minutes (last: ${release:-none})"
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify the deployed app
+        env:
+          APP_ENV: ${{ inputs.environment }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: npm run ops:verify-live -- --only app --app-url "$APP_URL" --report golive-evidence/deploy-${{ inputs.environment }}-${{ github.sha }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: golive-evidence-${{ inputs.environment }}-${{ github.sha }}
+          path: golive-evidence/

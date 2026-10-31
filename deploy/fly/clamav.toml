@@ -1,0 +1,29 @@
+# ClamAV daemon for the Fly.io deployment, as its own private app.
+#   fly apps create avixcheck-clamav
+#   fly deploy --config deploy/fly/clamav.toml
+# Do NOT allocate public IPs for this app (`fly ips list` must be empty).
+# The web and worker apps reach it over Fly's private network:
+#   fly secrets set --app avixcheck CLAMAV_HOST=avixcheck-clamav.internal
+app = "avixcheck-clamav"
+primary_region = "lhr"
+
+[build]
+  image = "clamav/clamav:1.4"
+
+# Signature databases (~300 MB) persist across restarts; freshclam updates them.
+[mounts]
+  source = "clamav_db"
+  destination = "/var/lib/clamav"
+
+[[vm]]
+  # clamd holds all signatures in memory; under 2 GB it is killed while reloading.
+  memory = "3gb"
+  cpus = 1
+
+[checks]
+  [checks.clamd]
+    type = "tcp"
+    port = 3310
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "5m"

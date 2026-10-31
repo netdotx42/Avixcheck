@@ -18,5 +18,7 @@ export async function GET() {
     }
   }
   const ready = database === "ok" && integrations.every((i) => !i.required || i.configured);
-  return NextResponse.json({ status: ready ? "ready" : "degraded", database, integrations }, { status: database === "ok" ? 200 : 503 });
+  // The deployed commit, so a deploy pipeline can confirm the new release is serving.
+  const release = process.env.APP_RELEASE || process.env.RENDER_GIT_COMMIT || null;
+  return NextResponse.json({ status: ready ? "ready" : "degraded", release, database, integrations }, { status: database === "ok" ? 200 : 503 });
 }

@@ -4,7 +4,7 @@
 
 AvixCheck flags supplier invoice discrepancies against purchase orders and agreed prices before payment. One Next.js application plus a background worker, backed by PostgreSQL, managed authentication (Clerk), private S3-compatible storage, ClamAV malware scanning and AI document extraction.
 
-> Status: all modules are implemented (imports, upload and AI extraction, matching and checks, exceptions review, reports and exports, operations). Live integrations (Clerk, Anthropic, ClamAV, S3, Sentry, Resend) and a real deployment have not yet been verified, so this is **not production-ready**; see the readiness checklist in `docs/RUNBOOK.md`.
+> Status: all modules are implemented (imports, upload and AI extraction, matching and checks, exceptions review, reports and exports, operations). Live integrations (Clerk, Anthropic, ClamAV, S3, Sentry, Resend) and a real deployment have not yet been verified, so this is **not production-ready**; see `docs/GO-LIVE.md` for the credentials, staging rehearsal and pre-launch checklist, and `docs/RUNBOOK.md` for operations.
 
 ## Quick start (local)
 
@@ -32,6 +32,7 @@ For local work without Clerk keys, set `AUTH_PROVIDER=dev` and `SESSION_SECRET` 
 | `npm run db:seed-demo` | Seed a labelled demo organisation (refused in production) |
 | `npm run ops:backup` | Database backup + manifest + storage listing (see `docs/RUNBOOK.md`) |
 | `npm run ops:restore-verify -- <manifest>` | Restore drill into a scratch database with row-count/checksum verification |
+| `npm run ops:verify-live` | Go-live verification against the real configured services (database, Clerk, S3, ClamAV, Anthropic, Sentry, Resend, deployed app) |
 | `npm run ops:retention-run` | Enqueue retention sweeps for all organisations now |
 
 Tests create a throwaway database owned by a non-superuser role so row-level security is really enforced. Point `TEST_ADMIN_DATABASE_URL` at a superuser connection (default `postgres://avix:avix@localhost:5432/postgres`).

@@ -26,11 +26,17 @@ services:
       - { key: S3_ACCESS_KEY_ID, sync: false }
       - { key: S3_SECRET_ACCESS_KEY, sync: false }
       - { key: S3_FORCE_PATH_STYLE, sync: false }
-      - { key: CLAMAV_HOST, sync: false }
+      # Private-network host of the ClamAV service below.
+      - key: CLAMAV_HOST
+        fromService: { type: pserv, name: avixcheck-clamav, property: host }
       - { key: CLAMAV_PORT, value: "3310" }
       - { key: ANTHROPIC_API_KEY, sync: false }
       - { key: EXTRACTION_MODEL, value: claude-sonnet-5-5 }
       - { key: SENTRY_DSN, sync: false }
+      - { key: SENTRY_TRACES_SAMPLE_RATE, value: "0" }
+      - { key: SIGNED_URL_TTL_SECONDS, value: "300" }
+      - { key: MAX_UPLOAD_BYTES, value: "20971520" }
+      - { key: DEFAULT_RETENTION_DAYS, sync: false }
       - { key: RESEND_API_KEY, sync: false }
       - { key: EMAIL_FROM, sync: false }
 
@@ -58,6 +64,8 @@ services:
     schedule: "15 2 * * *"
     envVars:
       - { key: NODE_ENV, value: production }
+      - { key: APP_ENV, value: production }
+      - { key: LOG_LEVEL, value: info }
       - { key: BACKUP_DATABASE_URL, sync: false }
       - { key: S3_REGION, sync: false }
       - { key: S3_BUCKET, sync: false }
@@ -70,3 +78,5 @@ services:
       - { key: BACKUP_S3_ENDPOINT, sync: false }
       - { key: BACKUP_S3_ACCESS_KEY_ID, sync: false }
       - { key: BACKUP_S3_SECRET_ACCESS_KEY, sync: false }
+      - { key: BACKUP_S3_FORCE_PATH_STYLE, sync: false }
+      - { key: BACKUP_S3_PREFIX, value: avixcheck/ }
