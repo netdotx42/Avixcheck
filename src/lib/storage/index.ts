@@ -17,6 +17,10 @@ function s3(): S3Client {
       region: e.S3_REGION,
       endpoint: e.S3_ENDPOINT,
       forcePathStyle: e.S3_FORCE_PATH_STYLE === "true",
+      // Only send checksums when an operation requires them: the SDK's newer defaults add
+      // x-amz-checksum-mode to presigned URLs, which several S3-compatible services reject.
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
       credentials: { accessKeyId: e.S3_ACCESS_KEY_ID!, secretAccessKey: e.S3_SECRET_ACCESS_KEY! },
     });
   }
