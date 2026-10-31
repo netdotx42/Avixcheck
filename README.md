@@ -19,6 +19,10 @@ npm run worker                      # background jobs (separate terminal)
 
 For local work without Clerk keys, set `AUTH_PROVIDER=dev` and `SESSION_SECRET` (32+ random chars). The dev provider is refused when `NODE_ENV=production`.
 
+## Website on Vercel
+
+`vercel.json` makes Vercel serve only the static website: `index.html` (overview) and `preview.html` (data-free interactive preview, also at `/preview`). Vercel does not build or run the Next.js app; the app deploys to Render or Fly.io through `.github/workflows/deploy.yml`. In the Vercel project, leave Framework Preset, Build Command and Output Directory unset (or "Other") so `vercel.json` applies, and keep Root Directory empty.
+
 ## Scripts
 
 | Command | What it does |
