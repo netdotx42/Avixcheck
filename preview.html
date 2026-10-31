@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0}</style>
+<title>AvixCheck Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the real app shell (sidebar + page) under a fixed "illustrative data" band, with a 5-step tour strip at the top of every page.
+   Tokens mirror the app's own black / silver / blue design tokens (src/app/globals.css). Dark first, light variant derived. */
+:root {
+  --bg: #080b10; --surface: #141a23; --surface-2: #1a2130; --text: #e5e7eb; --muted: #9ca3af;
+  --border: #303a49; --primary: #2563eb; --primary-hover: #1d4ed8; --focus: #60a5fa; --silver: #c0c7d2;
+  --ok: #34d399; --warn: #fbbf24; --danger: #f87171; --info: #60a5fa;
+  --paper: #fbfbf8; --paper-ink: #1f2430; --paper-rule: #d9dce2;
+  --metal-a: #f3f4f6; --metal-b: #c0c7d2; --metal-c: #8b95a5;
+  --band: #2a1f05; --band-text: #fcd34d; --band-border: #6b4e0a;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius: 12px;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f3f5f8; --surface: #ffffff; --surface-2: #edf0f5; --text: #111827; --muted: #556070;
+  --border: #d4dae3; --primary: #2563eb; --primary-hover: #1d4ed8; --focus: #1d4ed8; --silver: #556070;
+  --ok: #047857; --warn: #a16207; --danger: #b91c1c; --info: #1d4ed8;
+  --metal-a: #374151; --metal-b: #1f2937; --metal-c: #111827;
+  --band: #fef3c7; --band-text: #713f12; --band-border: #f0c96a;
+  color-scheme: light;
+} }
+:root[data-theme="light"] {
+  --bg: #f3f5f8; --surface: #ffffff; --surface-2: #edf0f5; --text: #111827; --muted: #556070;
+  --border: #d4dae3; --primary: #2563eb; --primary-hover: #1d4ed8; --focus: #1d4ed8; --silver: #556070;
+  --ok: #047857; --warn: #a16207; --danger: #b91c1c; --info: #1d4ed8;
+  --metal-a: #374151; --metal-b: #1f2937; --metal-c: #111827;
+  --band: #fef3c7; --band-text: #713f12; --band-border: #f0c96a;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--band); }
+a { color: var(--focus); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; }
+.num { font-variant-numeric: tabular-nums lining-nums; }
+.mono { font-family: var(--font-mono); font-size: 0.8125rem; }
+.muted { color: var(--muted); }
+.small { font-size: 0.8125rem; }
+.xs { font-size: 0.75rem; }
+
+/* Illustrative-data band */
+.band { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--band); color: var(--band-text); border-bottom: 1px solid var(--band-border);
+  padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; justify-content: space-between; font-size: 0.8125rem; }
+.band strong { font-weight: 600; }
+.band button { background: transparent; color: var(--band-text); border: 1px solid var(--band-border); border-radius: 6px; padding: 3px 10px; font: inherit; cursor: pointer; }
+.band button:hover { background: color-mix(in srgb, var(--band-border) 30%, transparent); }
+
+/* Shell */
+.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: calc(100vh - 40px); }
+.side { border-right: 1px solid var(--border); background: var(--surface); padding: 20px 12px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 40px; height: calc(100vh - 40px); }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
+.brand .name { font-weight: 600; font-size: 1rem; letter-spacing: -0.01em; background: linear-gradient(180deg, var(--metal-a), var(--metal-b) 55%, var(--metal-c)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand .tag { font-size: 11px; color: var(--muted); }
+.nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; color: var(--muted); font-size: 0.875rem; }
+.nav a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+.nav a[aria-current="page"] { background: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 40%, transparent); }
+.nav a[aria-current="page"] svg { color: var(--focus); }
+.nav .count { margin-left: auto; font-size: 11px; border-radius: 999px; padding: 0 7px; background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.role { margin-top: auto; padding: 12px; border: 1px solid var(--border); border-radius: 10px; display: grid; gap: 6px; }
+.role label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.main { min-width: 0; padding-block: 24px 64px; padding-left: max(16px, min(40px, 4vw)); padding-right: max(16px, min(40px, 4vw)); }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 20px; }
+
+/* Tour strip: the real sequence an invoice goes through */
+.tour { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.tour a { display: grid; gap: 2px; padding: 10px 14px; color: var(--muted); border-right: 1px solid var(--border); position: relative; }
+.tour a:last-child { border-right: 0; }
+.tour a:hover { background: var(--surface-2); text-decoration: none; }
+.tour .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px; }
+.tour .t { color: var(--text); font-weight: 500; font-size: 0.8125rem; }
+.tour .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border); display: inline-grid; place-items: center; font-size: 10px; color: var(--muted); }
+.tour .done .dot { background: var(--ok); border-color: var(--ok); color: var(--bg); }
+.tour .now { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.tour .now::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--primary); }
+.tour .now .dot { border-color: var(--focus); color: var(--focus); }
+
+.ph { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.ph p { color: var(--muted); margin-top: 4px; max-width: 70ch; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; min-width: 0; }
+.card.flush { padding: 0; }
+.card-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
+.card.flush .card-h { padding: 16px 20px 0; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid-main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.stat .l { font-size: 0.8125rem; color: var(--muted); }
+.stat .v { font-size: 1.75rem; font-weight: 600; margin-top: 4px; letter-spacing: -0.02em; }
+.stat .h { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+.rule { height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--silver) 55%, transparent), transparent); }
+
+/* Buttons and inputs */
+.btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; padding: 8px 14px; font: 500 0.875rem/1.25rem var(--font-sans); cursor: pointer; border: 1px solid transparent; transition: background-color 120ms, border-color 120ms; white-space: nowrap; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); text-decoration: none; }
+.btn-secondary { background: transparent; color: var(--text); border-color: var(--border); }
+.btn-secondary:hover { border-color: var(--silver); text-decoration: none; }
+.btn-danger { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.input, select.input, textarea.input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font: 0.875rem var(--font-sans); }
+.input:focus { outline: 2px solid var(--focus); outline-offset: 0; border-color: transparent; }
+.input.flag { border-color: var(--warn); }
+.label { display: block; font-size: 0.8125rem; font-weight: 500; margin-bottom: 4px; }
+.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+dl.kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 0; }
+dl.kv dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+dl.kv dd { margin: 2px 0 0; min-width: 0; overflow-wrap: anywhere; }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; border: 1px solid; padding: 1px 8px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
+.badge svg { width: 13px; height: 13px; flex: none; }
+.t-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.t-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.t-danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.t-info, .t-progress { color: var(--info); border-color: color-mix(in srgb, var(--info) 40%, transparent); background: color-mix(in srgb, var(--info) 10%, transparent); }
+.t-neutral { color: var(--muted); border-color: var(--border); background: var(--surface-2); }
+.t-progress svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.sample { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--band-text); background: var(--band); border: 1px solid var(--band-border); border-radius: 4px; padding: 0 5px; vertical-align: 1px; }
+.conf { font: 500 0.75rem var(--font-mono); padding: 0 6px; border-radius: 4px; }
+.conf.hi { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.conf.lo { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+
+/* Tables */
+.tbl-wrap { overflow-x: auto; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.tbl th { text-align: left; font-weight: 500; font-size: 0.75rem; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl td { padding: 10px 12px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); vertical-align: top; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl .r { text-align: right; }
+.tbl tbody tr.click { cursor: pointer; }
+.tbl tbody tr.click:hover td { background: var(--surface-2); }
+.card.flush .tbl th:first-child, .card.flush .tbl td:first-child { padding-left: 20px; }
+.card.flush .tbl th:last-child, .card.flush .tbl td:last-child { padding-right: 20px; }
+.exp { color: var(--warn); }
+.sav { color: var(--ok); }
+
+/* Upload */
+.drop { border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 32px 20px; text-align: center; display: grid; gap: 10px; justify-items: center; background: var(--surface); transition: border-color 120ms, background 120ms; }
+.drop.over { border-color: var(--focus); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+.drop svg { width: 28px; height: 28px; color: var(--silver); }
+.progress { height: 6px; width: 180px; max-width: 100%; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--primary); transition: width 120ms linear; }
+
+/* Pipeline timeline */
+.pipe { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.step { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; background: var(--surface); min-width: 0; }
+.step .s { display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; font-weight: 500; }
+.step .d { font-size: 0.75rem; color: var(--muted); }
+.step svg { width: 15px; height: 15px; flex: none; }
+.step.done svg { color: var(--ok); }
+.step.active { border-color: color-mix(in srgb, var(--info) 60%, transparent); }
+.step.active svg { color: var(--info); animation: spin 1s linear infinite; }
+.step.wait { border-color: color-mix(in srgb, var(--warn) 60%, transparent); background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
+.step.wait svg { color: var(--warn); }
+.step.stop { border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
+.step.stop svg { color: var(--danger); }
+.step.todo { opacity: 0.6; }
+
+/* Sample document, drawn as paper */
+.paper { background: var(--paper); color: var(--paper-ink); border-radius: 6px; padding: 24px; font-size: 12px; line-height: 1.45; box-shadow: 0 1px 0 rgb(0 0 0 / 0.2), 0 10px 30px -12px rgb(0 0 0 / 0.5); color-scheme: light; }
+.paper h3 { font-size: 16px; letter-spacing: 0.08em; }
+.paper .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.paper table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.paper th, .paper td { padding: 5px 6px; border-bottom: 1px solid var(--paper-rule); text-align: left; }
+.paper th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #5b6170; }
+.paper .r { text-align: right; }
+.paper .hl { background: #fde68a; color: #422006; outline: 1px dashed #b45309; border-radius: 2px; padding: 0 2px; }
+.paper .tot td { border: 0; padding-top: 3px; padding-bottom: 3px; }
+
+.callout { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent); background: color-mix(in srgb, var(--primary) 9%, var(--surface)); border-radius: var(--radius); padding: 16px 20px; }
+.callout p { max-width: 70ch; }
+.note { border-left: 3px solid var(--warn); background: color-mix(in srgb, var(--warn) 8%, transparent); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 0.8125rem; }
+.note.info { border-left-color: var(--info); background: color-mix(in srgb, var(--info) 8%, transparent); }
+.note.ok { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.finding { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.finding:last-child { border-bottom: 0; }
+.sev { width: 4px; align-self: stretch; border-radius: 2px; }
+.sev.high { background: var(--danger); } .sev.medium { background: var(--warn); } .sev.low { background: var(--info); }
+.decisions { display: grid; gap: 8px; }
+.decisions label { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+.decisions label:has(input:checked) { border-color: var(--focus); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.decisions label.off { opacity: 0.55; cursor: not-allowed; }
+.history { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.history li { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; }
+.history li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--silver); margin-top: 6px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.filters > div { min-width: 160px; flex: 1 1 160px; max-width: 240px; }
+pre.csv { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; font: 0.75rem/1.5 var(--font-mono); margin: 0; max-height: 260px; }
+.chart text { fill: var(--muted); font: 11px var(--font-sans); }
+.chart .grid { stroke: var(--border); stroke-width: 1; }
+.chart .bar { fill: var(--primary); }
+.chart .bar.cur { fill: var(--focus); }
+.toast { position: fixed; z-index: 40; right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.5); font-size: 0.875rem; max-width: min(360px, calc(100vw - 32px)); }
+
+@media (max-width: 1000px) {
+  .grid-main, .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pipe { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 12px max(16px, env(safe-area-inset-left, 0px)) 12px max(16px, env(safe-area-inset-right, 0px)); gap: 10px; }
+  .side .brand { padding: 0; }
+  .nav { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 2px; }
+  .nav a { white-space: nowrap; padding: 6px 10px; }
+  .role { margin-top: 0; grid-template-columns: auto minmax(0, 1fr); align-items: center; padding: 8px 10px; }
+  .role .muted { grid-column: 1 / -1; }
+  .tour { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .tour a { padding: 8px 6px; }
+  .tour .t { display: none; }
+  .tour .k { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 10px; letter-spacing: 0.02em; }
+  .field-grid, dl.kv { grid-template-columns: minmax(0, 1fr); }
+  .pipe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .finding { grid-template-columns: auto minmax(0, 1fr); }
+  .finding > :last-child { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<style>
+.empty { display: grid; justify-items: center; text-align: center; gap: 8px; padding: 36px 20px; }
+.empty svg { width: 28px; height: 28px; color: var(--silver); }
+.empty p { max-width: 56ch; color: var(--muted); }
+.flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.flow a { display: grid; gap: 4px; border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface); color: var(--text); }
+.flow a:hover { border-color: var(--silver); text-decoration: none; }
+.flow .n { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.flow .d { font-size: 0.75rem; color: var(--muted); }
+@media (max-width: 1000px) { .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+
+<div class="band" role="note">
+  <span><strong>Not connected to a live AvixCheck service yet.</strong> This preview holds no data. Every screen shows what the app shows with an empty organisation, plus the real rules and settings it runs on.</span>
+</div>
+
+<div class="shell">
+  <aside class="side">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="avx-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3F4F6"/><stop offset="1" stop-color="#8B95A5"/></linearGradient></defs><rect x="1" y="1" width="30" height="30" rx="8" fill="#141A23" stroke="#303A49"/><path d="M8 23 L16 8 L24 23" fill="none" stroke="url(#avx-s)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 18.5 L15 21.5 L21 15" fill="none" stroke="#2563EB" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><div class="name">AvixCheck</div><div class="tag">Every invoice. Checked.</div></div>
+    </div>
+    <ul class="nav" id="nav"></ul>
+    <div class="role">
+      <label for="role">Preview as</label>
+      <select id="role" class="input">
+        <option value="admin">Admin</option>
+        <option value="reviewer">Reviewer</option>
+        <option value="viewer">Viewer</option>
+      </select>
+      <p class="xs muted" id="role-hint"></p>
+    </div>
+  </aside>
+  <main class="main"><div class="wrap" id="app"></div></main>
+</div>
+
+<script>
+(() => {
+"use strict";
+// Everything below is product configuration copied from the codebase (permissions, rules, statuses, settings defaults).
+// There are no suppliers, invoices, amounts or people in this file.
+const I = {
+  gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+  chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+  rules: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  ok: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  danger: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  neutral: '<path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0"/><path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7"/><path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8"/><path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69"/><path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0"/><path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7"/><path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8"/><path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69"/>',
+  progress: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+};
+const icon = (k) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k]}</svg>`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const badge = (tone, label) => `<span class="badge t-${tone}">${icon(tone)}${esc(label)}</span>`;
+const $ = (s) => document.querySelector(s);
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // src/env.ts default
+
+// src/lib/auth/permissions.ts
+const PERMS = {
+  "invoice.upload": ["admin", "reviewer"], "invoice.edit": ["admin", "reviewer"], "exception.assign": ["admin", "reviewer"],
+  "exception.decide": ["admin", "reviewer"], "exception.accept_variance": ["admin"], "export.create": ["admin", "reviewer"],
+  "invoice.view": ["admin", "reviewer", "viewer"], "report.view": ["admin", "reviewer", "viewer"],
+};
+const can = (p) => PERMS[p].includes(role);
+const ROLE_HINT = { admin: "Can upload, correct, decide and accept variances.", reviewer: "Can upload, correct and decide, but not accept variances.", viewer: "Read only." };
+
+// src/db/schema.ts invoice_status, with what each means
+const STATUSES = [
+  ["uploaded", "Uploaded", "neutral", "Stored privately, waiting for the virus scan."],
+  ["scanning", "Scanning", "progress", "ClamAV is scanning the file."],
+  ["quarantined", "Quarantined", "danger", "The scan found something. The file is never read."],
+  ["extracting", "Extracting", "progress", "AI reads supplier, numbers, dates, totals and lines, with a confidence per field."],
+  ["extraction_review", "Extraction review", "warn", "A field is below the extraction confidence threshold. A person confirms or corrects it."],
+  ["matching", "Matching", "progress", "Resolving supplier, purchase order, PO lines and the dated price agreement."],
+  ["matching_review", "Matching review", "warn", "A unique but weak match. A person confirms it before anything is checked."],
+  ["checking", "Checking", "progress", "Deterministic rules run. No AI decides a finding."],
+  ["exceptions_open", "Exceptions open", "warn", "Checks found discrepancies that need a decision."],
+  ["passed", "Passed checks", "ok", "Every applicable exception is resolved. This is not payment approval."],
+  ["failed", "Failed", "danger", "Processing failed permanently. It can be retried from Settings."],
+  ["rejected", "Rejected", "danger", "A person rejected the invoice. It stops consuming PO balance."],
+];
+
+// src/modules/checks/README.md
+const RULES = [
+  ["price_variance", "Price variance", "Unit price above the agreement price (PO price when there is no agreement) beyond the unit-price tolerance. Favourable prices are not flagged."],
+  ["missing_discount", "Missing discount", "An agreement discount applies at the billed quantity but the net price was not billed."],
+  ["quantity_excess", "Excess quantity", "Quantity above the PO line’s remaining balance beyond the quantity tolerance."],
+  ["receipt_quantity_exceeded", "Above received quantity", "Only when receipts exist: quantity above received minus already billed."],
+  ["po_balance_exceeded", "PO balance exceeded", "Cumulative billed value above the PO value, minus what line findings already explain."],
+  ["arithmetic_error", "Arithmetic error", "Quantity × price vs line amount, lines vs subtotal, subtotal + tax vs total, with your rounding mode."],
+  ["duplicate_invoice", "Possible duplicate", "Same document, same supplier and invoice number, or same supplier, total and date."],
+  ["unapproved_charge", "Unapproved charge", "A charge line with no approved charge of that type, or above its maximum."],
+  ["currency_mismatch", "Currency mismatch", "Invoice currency differs from the PO, agreement or supplier. No conversion is applied."],
+  ["unit_mismatch", "Unit mismatch", "Invoice unit differs from the PO line or agreement unit (ea, each and pcs count as the same)."],
+  ["missing_reference", "Missing reference", "Supplier, PO, PO line or agreement not found, or a closed or cancelled PO."],
+  ["conflicting_reference", "Conflicting reference", "More than one candidate supplier, PO or PO line."],
+  ["missing_data", "Missing data", "Missing number, date, currency, total, lines, or a line’s quantity, price or amount."],
+];
+
+// src/lib/org-settings.ts defaults
+const SETTINGS = [
+  ["Extraction confidence for review", "Below 90%"], ["Match confidence for review", "Below 90%"],
+  ["Unit price tolerance", "0.01 absolute"], ["Line amount tolerance", "0.02 absolute"], ["Invoice total tolerance", "0.05 absolute"],
+  ["Quantity tolerance", "0 (exact)"], ["Rounding", "Half up, each line rounded before summing"],
+  ["Document retention", "2,555 days (7 years)"], ["Export retention", "30 days"],
+];
+
+// src/modules/exceptions/rules.ts
+const DECISIONS = {
+  accept_variance: ["Accept variance", "Approve the difference. Needs the Admin permission."],
+  request_correction: ["Request supplier correction", "Stays unresolved until the confirmed correction amount is recorded, which reports as a realised saving. Reason optional."],
+  reject_invoice: ["Reject invoice", "Rejects the whole invoice and releases its PO billings."],
+  dismiss: ["Dismiss", "Not a real problem. Dismissing a discrepancy that carries exposure needs the Admin permission."],
+};
+const decisionsFor = (kind) => kind === "discrepancy" ? ["accept_variance", "request_correction", "reject_invoice", "dismiss"] : ["reject_invoice", "dismiss"];
+const permFor = (d, kind, exposure) => (d === "accept_variance" || (d === "dismiss" && kind === "discrepancy" && exposure)) ? "exception.accept_variance" : "exception.decide";
+
+// src/modules/exports/definitions.ts
+const EXPORTS = [
+  ["Invoices", "One row per invoice or credit note with status, totals and open exception count."],
+  ["Discrepancies", "Every current discrepancy with expected vs actual values, amount and the rule and invoice versions used."],
+  ["Exceptions and decisions", "Exceptions with assignee, decision, reason and confirmed corrections (realised savings)."],
+];
+
+let role = "admin";
+const files = []; // the viewer's own files, checked in the browser only
+let decKind = "discrepancy", decExposure = true;
+
+const header = (t, d, a = "") => `<div class="ph"><div><h1>${t}</h1>${d ? `<p>${d}</p>` : ""}</div>${a ? `<div class="btn-row">${a}</div>` : ""}</div>`;
+const empty = (ic, t, b, a = "") => `<div class="card empty">${icon(ic)}<h2>${t}</h2><p>${b}</p>${a}</div>`;
+const notLive = (what) => `<div class="note info">${what} run on the deployed AvixCheck service. It will appear here once the service is live and connected.</div>`;
+
+function viewOverview() {
+  const steps = [["upload", "Upload", "PDF, virus-scanned"], ["invoices", "Extraction", "Fields with confidence"], ["invoices", "Matching", "Supplier, PO, agreement"], ["exceptions", "Exceptions", "People decide"], ["reports", "Reports", "Exposure and savings"]];
+  return `${header("Overview", "What needs attention across received invoices.")}
+    <div class="flow">${steps.map(([h, t, d], i) => `<a href="#${h}"><span class="n">Step ${i + 1}</span><strong>${t}</strong><span class="d">${d}</span></a>`).join("")}</div>
+    ${empty("gauge", "No invoices yet", "Invoice volume, unresolved discrepancies by type and age, and processing failures appear here once invoices are uploaded to the live service.", can("invoice.upload") ? `<a class="btn btn-primary" href="#upload">${icon("upload")}Upload invoices</a>` : "")}`;
+}
+
+function viewInvoices() {
+  return `${header("Invoices", "Every invoice and credit note received, with where it is in processing.", can("invoice.upload") ? `<a class="btn btn-primary" href="#upload">${icon("upload")}Upload invoices</a>` : "")}
+    ${empty("file", "No invoices yet", "Upload supplier PDF invoices to scan, extract and check them against your purchase orders and agreements.")}
+    <div class="card flush"><div class="card-h"><h2>What each status means</h2></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody>
+      ${STATUSES.map(([, l, t, m]) => `<tr><td>${badge(t, l)}</td><td>${m}</td></tr>`).join("")}</tbody></table></div></div>`;
+}
+
+function viewUpload() {
+  return `${header("Upload invoices", "PDF invoices and credit notes, up to 20 MB each. Each file is virus-scanned, then read, matched and checked.")}
+    ${!can("invoice.upload") ? '<div class="note">Viewers can’t upload. Switch “Preview as” to Admin or Reviewer.</div>' : ""}
+    <div class="drop" id="drop">
+      ${icon("upload")}
+      <div><strong>Drop PDFs here</strong> <span class="muted">or</span></div>
+      <label class="btn btn-secondary" for="invoice-files" ${can("invoice.upload") ? "" : 'aria-disabled="true" style="opacity:.5;pointer-events:none"'}>Choose files</label>
+      <input id="invoice-files" type="file" accept="application/pdf,.pdf" multiple hidden>
+      <p class="xs muted" style="max-width:60ch">Your files stay in your browser. The preview runs the same checks the upload route runs before storing a file: PDF only, size limit, and a SHA-256 fingerprint used to spot a file that was already uploaded.</p>
+    </div>
+    ${files.length ? `<div class="card flush"><div class="card-h"><h2>Checked in your browser</h2></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>File</th><th>Fingerprint (SHA-256)</th><th>Result</th></tr></thead><tbody>
+      ${files.map((f) => `<tr><td><span class="mono">${esc(f.name)}</span><div class="xs muted num">${(f.size / 1024).toFixed(0)} KB</div></td>
+        <td class="mono xs" style="overflow-wrap:anywhere">${f.hash ? esc(f.hash) : "—"}</td>
+        <td>${f.error ? badge("danger", f.error) : f.dup ? badge("info", "Already checked: same file") : badge("ok", "Ready to upload")}</td></tr>`).join("")}
+      </tbody></table></div></div>${notLive("Storing, virus scanning, extraction and checks")}` : ""}`;
+}
+
+async function sha256(file) {
+  try { const d = await crypto.subtle.digest("SHA-256", await file.arrayBuffer()); return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join(""); }
+  catch { return null; }
+}
+async function acceptFiles(list) {
+  if (!can("invoice.upload")) return;
+  for (const f of list) {
+    const r = { name: f.name, size: f.size };
+    if (!(f.type === "application/pdf" || /\.pdf$/i.test(f.name))) r.error = "Only PDF files are accepted";
+    else if (f.size > MAX_UPLOAD_BYTES) r.error = "Over the 20 MB limit";
+    else { r.hash = await sha256(f); r.dup = !!(r.hash && files.some((x) => x.hash === r.hash)); }
+    files.unshift(r);
+  }
+  render();
+}
+
+function viewExceptions() {
+  const opts = decisionsFor(decKind);
+  return `${header("Exceptions", "Discrepancies and records that need a person. Amounts shown are potential exposure until a correction is confirmed.")}
+    ${empty("shield", "Nothing needs review", "When checks find a discrepancy, or extraction or matching is uncertain, it appears here to be assigned and decided.")}
+    <div class="card"><div class="card-h"><h2>Who can decide what</h2></div>
+      <p class="small muted" style="margin-bottom:12px">The decisions offered depend on the kind of exception and your role. Change the options to see the rules the app enforces.</p>
+      <div class="filters" style="margin-bottom:14px">
+        <div><label class="label" for="d-kind">Exception kind</label><select class="input" id="d-kind">
+          <option value="discrepancy" ${decKind === "discrepancy" ? "selected" : ""}>Discrepancy</option>
+          <option value="extraction_review" ${decKind === "extraction_review" ? "selected" : ""}>Extraction review</option>
+          <option value="matching_review" ${decKind === "matching_review" ? "selected" : ""}>Matching review</option>
+          <option value="processing_failure" ${decKind === "processing_failure" ? "selected" : ""}>Processing failure</option></select></div>
+        ${decKind === "discrepancy" ? `<div><label class="label" for="d-exp">Potential exposure</label><select class="input" id="d-exp"><option value="1" ${decExposure ? "selected" : ""}>Has an amount</option><option value="0" ${decExposure ? "" : "selected"}>No amount</option></select></div>` : ""}
+      </div>
+      <div class="decisions">${opts.map((d) => { const ok = can(permFor(d, decKind, decExposure)); return `<div class="${ok ? "" : "off"}" style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:8px;padding:10px 12px;${ok ? "" : "opacity:.6"}">
+        ${ok ? badge("ok", "Allowed") : badge("neutral", "Admin only")}<span><strong>${DECISIONS[d][0]}</strong><span class="xs muted" style="display:block">${DECISIONS[d][1]}</span></span></div>`; }).join("")}</div>
+      ${decKind !== "discrepancy" ? '<p class="xs muted" style="margin-top:10px">Review and failure exceptions are fixed upstream: correct the fields, confirm the match, or retry the job. Dismissing one never passes the invoice.</p>' : ""}
+      <p class="xs muted" style="margin-top:10px">Every decision except a supplier correction request needs a written reason, kept in the audit history.</p>
+    </div>`;
+}
+
+function viewReports() {
+  return `${header("Reports", "Invoice volume, unresolved discrepancies, exposure versus realised savings, and processing failures.")}
+    ${empty("chart", "No invoices in this range", "Reports summarise received invoices, unresolved discrepancies, exposure, confirmed corrections and processing failures.")}
+    <div class="card"><div class="card-h"><h2>Exports</h2></div>
+      <p class="small muted" style="margin-bottom:12px">CSV exports are built in the background and served by a signed link. ${can("export.create") ? "" : "Viewers can’t create exports."}</p>
+      <div class="tbl-wrap"><table class="tbl"><tbody>${EXPORTS.map(([l, d]) => `<tr><td><strong>${l}</strong><div class="xs muted">${d}</div></td></tr>`).join("")}</tbody></table></div></div>`;
+}
+
+function viewRules() {
+  return `${header("Checks and settings", "The deterministic rules every invoice is checked against (rules@1.0.0), and the default organisation settings.")}
+    <div class="card flush"><div class="card-h"><h2>Discrepancy rules</h2></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Finding</th><th>When it is raised</th></tr></thead><tbody>
+      ${RULES.map(([k, l, d]) => `<tr><td><strong>${l}</strong><div class="xs muted mono">${k}</div></td><td>${d}</td></tr>`).join("")}</tbody></table></div>
+      <p class="xs muted" style="padding:0 20px 16px">Amounts are potential exposure in invoice currency, never realised savings. Overlapping rules net each other out so amounts can be summed.</p></div>
+    <div class="card flush"><div class="card-h"><h2>Default settings</h2><span class="xs muted">Each organisation can change these</span></div><div class="tbl-wrap"><table class="tbl"><tbody>
+      ${SETTINGS.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join("")}</tbody></table></div></div>`;
+}
+
+const ROUTES = { overview: viewOverview, upload: viewUpload, invoices: viewInvoices, exceptions: viewExceptions, reports: viewReports, checks: viewRules };
+function render() {
+  const h = location.hash.replace(/^#/, "");
+  const name = ROUTES[h] ? h : "overview";
+  const navKey = name === "upload" ? "invoices" : name;
+  const items = [["overview", "Overview", "gauge"], ["invoices", "Invoices", "file"], ["exceptions", "Exceptions", "shield"], ["reports", "Reports", "chart"], ["checks", "Checks and settings", "rules"]];
+  $("#nav").innerHTML = items.map(([k, l, ic]) => `<li><a href="#${k}" ${navKey === k ? 'aria-current="page"' : ""}>${icon(ic)}${l}</a></li>`).join("");
+  $("#role").value = role; $("#role-hint").textContent = ROLE_HINT[role];
+  $("#app").innerHTML = ROUTES[name]();
+  const drop = $("#drop"), input = $("#invoice-files");
+  if (drop) {
+    input.addEventListener("change", () => { acceptFiles([...input.files]); input.value = ""; });
+    ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+    drop.addEventListener("drop", (e) => acceptFiles([...(e.dataTransfer?.files || [])]));
+  }
+}
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.id === "role") role = t.value;
+  else if (t.id === "d-kind") decKind = t.value;
+  else if (t.id === "d-exp") decExposure = t.value === "1";
+  else return;
+  render();
+});
+window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
+render();
+})();
+</script>
+
+</body>
+</html>
